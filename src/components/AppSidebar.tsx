@@ -4,6 +4,7 @@ import {
   BookOpen, Truck, BarChart3, Bell, Users, Shield, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { useState } from "react";
+import whizuppLogo from "@/assets/whizupp-logo.png";
 
 const modules = [
   { name: "Dashboard", path: "/", icon: LayoutDashboard },
@@ -31,12 +32,10 @@ export default function AppSidebar() {
       }`}
     >
       <div className="flex items-center gap-2 px-4 py-5 border-b border-sidebar-border">
-        <div className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center text-sidebar-primary-foreground font-heading font-bold text-sm shrink-0">
-          W
-        </div>
+        <img src={whizuppLogo} alt="Whiz Upp" className="w-8 h-8 shrink-0 object-contain" />
         {!collapsed && (
           <span className="font-heading font-bold text-sm text-sidebar-primary-foreground truncate">
-            Whizupp
+            Whiz Upp
           </span>
         )}
       </div>
