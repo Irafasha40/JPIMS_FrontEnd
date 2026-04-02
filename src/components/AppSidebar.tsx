@@ -37,10 +37,10 @@ export default function AppSidebar() {
         collapsed ? "w-16" : "w-60"
       }`}
     >
-      <div className="flex items-center gap-2 px-4 py-5 border-b border-sidebar-border">
-        <img src={whizuppLogo} alt="Whiz Upp" className="w-12 h-12 shrink-0 object-contain" />
+      <div className="flex items-center gap-3 px-4 py-6 border-b border-sidebar-border">
+        <img src={whizuppLogo} alt="Whiz Upp" className="w-16 h-16 shrink-0 object-contain" />
         {!collapsed && (
-          <span className="font-heading font-bold text-sm text-sidebar-primary-foreground truncate">
+          <span className="font-heading font-bold text-base text-sidebar-primary-foreground truncate">
             Whiz Upp
           </span>
         )}
