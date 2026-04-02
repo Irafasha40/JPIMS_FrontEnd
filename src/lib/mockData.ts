@@ -109,8 +109,8 @@ export const notifications = [
   { id: "N002", type: "near_expiry" as const, title: "Near Expiry: Orange Blast 1L", message: "LOT-OB1L-001 expires on 2026-04-05 (10 days remaining)", date: "2026-03-26T07:00:00", read: false, severity: "warning" as const },
   { id: "N003", type: "batch_complete" as const, title: "Batch Completed: B-20260325-001", message: "Orange Blast 500ml batch completed with 96% yield", date: "2026-03-25T16:00:00", read: true, severity: "success" as const },
   { id: "N004", type: "qc_due" as const, title: "QC Test Due: B-20260325-002", message: "Mango Tango 500ml batch awaiting quality control testing", date: "2026-03-25T14:00:00", read: false, severity: "info" as const },
-  { id: "N005", type: "order_confirmed" as const, title: "Order Confirmed: SO-003", message: "Carrefour Kenya order for KES 72,000 confirmed", date: "2026-03-25T10:00:00", read: true, severity: "info" as const },
-  { id: "N006", type: "new_order" as const, title: "New Order: SO-004", message: "Chandarana Foodplus placed order for KES 12,800", date: "2026-03-26T09:15:00", read: false, severity: "info" as const },
+  { id: "N005", type: "order_confirmed" as const, title: "Order Confirmed: SO-003", message: "Carrefour Kenya order for RWF 72,000 confirmed", date: "2026-03-25T10:00:00", read: true, severity: "info" as const },
+  { id: "N006", type: "new_order" as const, title: "New Order: SO-004", message: "Chandarana Foodplus placed order for RWF 12,800", date: "2026-03-26T09:15:00", read: false, severity: "info" as const },
   { id: "N007", type: "low_stock" as const, title: "Stock Warning: PET Bottles (1L)", message: "Current stock 3100 approaching minimum threshold of 1500", date: "2026-03-26T06:00:00", read: true, severity: "warning" as const },
   { id: "N008", type: "batch_complete" as const, title: "Batch Completed: B-20260324-001", message: "Passion Punch 1L batch completed with 94% yield", date: "2026-03-24T17:30:00", read: true, severity: "success" as const },
 ];

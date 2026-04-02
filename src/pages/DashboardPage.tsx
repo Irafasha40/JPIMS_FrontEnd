@@ -209,7 +209,7 @@ function SalesStaffDashboard() {
         <StatCard label="Orders Today" value={salesOrders.length} sub="Total orders" icon={ShoppingCart} color="text-primary" />
         <StatCard label="Pending" value={pending} sub="Awaiting confirmation" icon={Clock} color="text-secondary" />
         <StatCard label="Delivered" value={delivered} sub="Completed" icon={CheckCircle} color="text-primary" />
-        <StatCard label="Total Revenue" value={`KES ${totalRevenue.toLocaleString()}`} sub="All orders" icon={TrendingUp} color="text-primary" />
+        <StatCard label="Total Revenue" value={`RWF ${totalRevenue.toLocaleString()}`} sub="All orders" icon={TrendingUp} color="text-primary" />
       </div>
       <div>
         <h3 className="font-heading font-semibold mb-4">Order Pipeline</h3>
@@ -222,7 +222,7 @@ function SalesStaffDashboard() {
                   <div key={o.id} className="bg-muted rounded-lg p-3">
                     <p className="text-xs font-mono text-muted-foreground">{o.id}</p>
                     <p className="text-sm font-medium mt-0.5">{o.customer}</p>
-                    <p className="text-xs text-muted-foreground mt-1">KES {o.total.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground mt-1">RWF {o.total.toLocaleString()}</p>
                   </div>
                 ))}
                 {col.items.length === 0 && <p className="text-xs text-muted-foreground italic">No orders</p>}
@@ -244,7 +244,7 @@ function AdminDashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Total Production" value={productionBatches.length} sub={`${productionBatches.filter(b => b.status === "completed").length} completed`} icon={Factory} color="text-primary" />
         <StatCard label="Active Users" value={activeUsers} sub={`of ${users.length} total`} icon={Users} color="text-primary" />
-        <StatCard label="Revenue (Month)" value={`KES ${totalRevenue.toLocaleString()}`} sub={`${salesOrders.length} orders`} icon={TrendingUp} color="text-primary" />
+        <StatCard label="Revenue (Month)" value={`RWF ${totalRevenue.toLocaleString()}`} sub={`${salesOrders.length} orders`} icon={TrendingUp} color="text-primary" />
         <StatCard label="Alerts" value={unreadNotifs} sub="Unread notifications" icon={Bell} color="text-secondary" />
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

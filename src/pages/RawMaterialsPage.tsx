@@ -133,7 +133,7 @@ export default function RawMaterialsPage() {
                           </div>
                           <p className="text-xs text-muted-foreground">Min: {m.minStock}</p>
                         </td>
-                        <td className="px-4 py-3">KES {m.costPerUnit.toFixed(2)}</td>
+                        <td className="px-4 py-3">RWF {m.costPerUnit.toFixed(2)}</td>
                         <td className="px-4 py-3">
                           {m.stock < m.minStock ? <span className="status-badge-danger"><AlertTriangle className="w-3 h-3 mr-1" />Critical</span>
                           : m.stock < m.minStock * 1.5 ? <span className="status-badge-warning">Low</span>
@@ -218,7 +218,7 @@ export default function RawMaterialsPage() {
                   <td className="px-4 py-3 font-mono text-xs">{po.id}</td>
                   <td className="px-4 py-3 font-medium">{po.supplier}</td>
                   <td className="px-4 py-3">{po.items}</td>
-                  <td className="px-4 py-3 font-semibold">KES {po.total.toLocaleString()}</td>
+                  <td className="px-4 py-3 font-semibold">RWF {po.total.toLocaleString()}</td>
                   <td className="px-4 py-3 text-muted-foreground">{po.expectedDate}</td>
                   <td className="px-4 py-3"><span className={po.status === "received" ? "status-badge-success" : "status-badge-warning"}>{po.status === "received" ? "Received" : "Pending"}</span></td>
                 </tr>
@@ -239,7 +239,7 @@ export default function RawMaterialsPage() {
                 <div><p className="text-muted-foreground">Supplier</p><p className="font-medium">{selectedMaterial.supplier}</p></div>
                 <div><p className="text-muted-foreground">Current Stock</p><p className="font-semibold text-lg">{selectedMaterial.stock} {selectedMaterial.unit}</p></div>
                 <div><p className="text-muted-foreground">Min Threshold</p><p className="font-medium">{selectedMaterial.minStock} {selectedMaterial.unit}</p></div>
-                <div><p className="text-muted-foreground">Cost per Unit</p><p className="font-medium">KES {selectedMaterial.costPerUnit.toFixed(2)}</p></div>
+                <div><p className="text-muted-foreground">Cost per Unit</p><p className="font-medium">RWF {selectedMaterial.costPerUnit.toFixed(2)}</p></div>
                 <div><p className="text-muted-foreground">Last Purchase</p><p className="font-medium">{selectedMaterial.lastPurchase}</p></div>
               </div>
               <div>

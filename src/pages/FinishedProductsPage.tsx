@@ -131,13 +131,13 @@ export default function FinishedProductsPage() {
                   <tr key={p.id} className="border-b last:border-0">
                     <td className="px-4 py-3 font-medium">{p.name}</td>
                     <td className="px-4 py-3">{p.stock.toLocaleString()}</td>
-                    <td className="px-4 py-3">KES {p.unitCost}</td>
-                    <td className="px-4 py-3 font-semibold">KES {(p.stock * p.unitCost).toLocaleString()}</td>
+                    <td className="px-4 py-3">RWF {p.unitCost}</td>
+                    <td className="px-4 py-3 font-semibold">RWF {(p.stock * p.unitCost).toLocaleString()}</td>
                   </tr>
                 ))}
                 <tr className="bg-muted/50 font-bold">
                   <td className="px-4 py-3" colSpan={3}>Grand Total</td>
-                  <td className="px-4 py-3">KES {totalValue.toLocaleString()}</td>
+                  <td className="px-4 py-3">RWF {totalValue.toLocaleString()}</td>
                 </tr>
               </tbody>
             </table>
@@ -157,7 +157,7 @@ export default function FinishedProductsPage() {
               <div><p className="text-muted-foreground">Stock</p><p className="font-semibold text-lg">{selectedProduct.stock.toLocaleString()}</p></div>
               <div><p className="text-muted-foreground">Expiry</p><p className="font-medium">{selectedProduct.expiry}</p></div>
               <div><p className="text-muted-foreground">Location</p><p className="font-medium">{selectedProduct.location}</p></div>
-              <div><p className="text-muted-foreground">Unit Cost</p><p className="font-medium">KES {selectedProduct.unitCost}</p></div>
+              <div><p className="text-muted-foreground">Unit Cost</p><p className="font-medium">RWF {selectedProduct.unitCost}</p></div>
             </div>
           </DialogContent>
         </Dialog>
