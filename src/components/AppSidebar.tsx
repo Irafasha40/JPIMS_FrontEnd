@@ -38,7 +38,7 @@ export default function AppSidebar() {
       }`}
     >
       <div className="flex items-center gap-2 px-4 py-5 border-b border-sidebar-border">
-        <img src={whizuppLogo} alt="Whiz Upp" className="w-8 h-8 shrink-0 object-contain" />
+        <img src={whizuppLogo} alt="Whiz Upp" className="w-12 h-12 shrink-0 object-contain" />
         {!collapsed && (
           <span className="font-heading font-bold text-sm text-sidebar-primary-foreground truncate">
             Whiz Upp
