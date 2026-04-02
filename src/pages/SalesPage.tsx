@@ -57,14 +57,14 @@ export default function SalesPage() {
                     <div className="col-span-2"><Input placeholder="Lot" className="text-xs" /></div>
                     <div className="col-span-2"><Input type="number" placeholder="0" /></div>
                     <div className="col-span-2"><Input type="number" placeholder="0" /></div>
-                    <div className="col-span-2 text-sm font-semibold">KES 0</div>
+                    <div className="col-span-2 text-sm font-semibold">RWF 0</div>
                   </div>
                   <Button variant="ghost" size="sm" className="text-xs"><Plus className="w-3 h-3 mr-1" />Add line item</Button>
                 </div>
               </div>
               <div className="flex justify-between items-center bg-muted rounded-lg p-3">
                 <span className="text-sm text-muted-foreground">Grand Total</span>
-                <span className="font-heading font-bold text-lg">KES 0</span>
+                <span className="font-heading font-bold text-lg">RWF 0</span>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2"><Label>Payment Method</Label><Select><SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger><SelectContent><SelectItem value="cash">Cash</SelectItem><SelectItem value="bank">Bank Transfer</SelectItem><SelectItem value="credit">Credit</SelectItem></SelectContent></Select></div>
@@ -109,7 +109,7 @@ export default function SalesPage() {
                     <td className="px-4 py-3 text-xs font-mono text-muted-foreground">{o.id}</td>
                     <td className="px-4 py-3 font-medium">{o.customer}</td>
                     <td className="px-4 py-3">{o.items}</td>
-                    <td className="px-4 py-3 font-semibold">KES {o.total.toLocaleString()}</td>
+                    <td className="px-4 py-3 font-semibold">RWF {o.total.toLocaleString()}</td>
                     <td className="px-4 py-3 text-muted-foreground">{o.paymentMethod}</td>
                     <td className="px-4 py-3 text-muted-foreground">{o.date}</td>
                     <td className="px-4 py-3"><span className={s.cls}>{s.label}</span></td>
@@ -168,10 +168,10 @@ export default function SalesPage() {
                 <table className="w-full text-sm">
                   <thead><tr className="border-b text-xs text-muted-foreground uppercase"><th className="text-left py-2">Product</th><th className="text-right py-2">Qty</th><th className="text-right py-2">Price</th><th className="text-right py-2">Total</th></tr></thead>
                   <tbody>{selectedOrder.products.map((p, i) => (
-                    <tr key={i} className="border-b"><td className="py-2">{p.name}</td><td className="py-2 text-right">{p.qty}</td><td className="py-2 text-right">KES {p.unitPrice}</td><td className="py-2 text-right font-semibold">KES {p.total.toLocaleString()}</td></tr>
+                    <tr key={i} className="border-b"><td className="py-2">{p.name}</td><td className="py-2 text-right">{p.qty}</td><td className="py-2 text-right">RWF {p.unitPrice}</td><td className="py-2 text-right font-semibold">RWF {p.total.toLocaleString()}</td></tr>
                   ))}</tbody>
                 </table>
-                <div className="flex justify-between border-t pt-2 font-heading font-bold"><span>Grand Total</span><span>KES {selectedOrder.total.toLocaleString()}</span></div>
+                <div className="flex justify-between border-t pt-2 font-heading font-bold"><span>Grand Total</span><span>RWF {selectedOrder.total.toLocaleString()}</span></div>
                 <div className="text-xs text-muted-foreground"><p>Payment: {selectedOrder.paymentMethod}</p><p>Terms: Net 30 days</p></div>
                 <Button size="sm" className="w-full"><Printer className="w-4 h-4 mr-1" />Print Invoice</Button>
               </div>
@@ -182,14 +182,14 @@ export default function SalesPage() {
                   <div><p className="text-muted-foreground">Date</p><p>{selectedOrder.date}</p></div>
                   <div><p className="text-muted-foreground">Status</p><span className={statusMap[selectedOrder.status].cls}>{statusMap[selectedOrder.status].label}</span></div>
                   <div><p className="text-muted-foreground">Payment</p><p>{selectedOrder.paymentMethod}</p></div>
-                  <div><p className="text-muted-foreground">Total</p><p className="font-heading font-bold text-lg">KES {selectedOrder.total.toLocaleString()}</p></div>
+                  <div><p className="text-muted-foreground">Total</p><p className="font-heading font-bold text-lg">RWF {selectedOrder.total.toLocaleString()}</p></div>
                 </div>
                 <div>
                   <h4 className="text-sm font-semibold mb-2">Line Items</h4>
                   {selectedOrder.products.map((p, i) => (
                     <div key={i} className="flex justify-between py-2 border-b text-sm">
                       <span>{p.name} × {p.qty}</span>
-                      <span className="font-semibold">KES {p.total.toLocaleString()}</span>
+                      <span className="font-semibold">RWF {p.total.toLocaleString()}</span>
                     </div>
                   ))}
                 </div>

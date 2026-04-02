@@ -71,7 +71,7 @@ export default function RecipesPage() {
               <td className="px-4 py-3 font-medium">{r.name}</td>
               <td className="px-4 py-3 text-muted-foreground">{r.product}</td>
               <td className="px-4 py-3">v{r.version}</td>
-              <td className="px-4 py-3 font-semibold">KES {r.costPerBatch.toLocaleString()}</td>
+              <td className="px-4 py-3 font-semibold">RWF {r.costPerBatch.toLocaleString()}</td>
               <td className="px-4 py-3"><span className={statusCls[r.status]}>{r.status.charAt(0).toUpperCase() + r.status.slice(1)}</span></td>
               <td className="px-4 py-3"><div className="flex gap-1">
                 <Button variant="ghost" size="sm" onClick={() => setSelectedRecipe(r)}><Eye className="w-4 h-4" /></Button>
@@ -92,7 +92,7 @@ export default function RecipesPage() {
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div><p className="text-muted-foreground">Product</p><p className="font-medium">{selectedRecipe.product}</p></div>
                   <div><p className="text-muted-foreground">Status</p><span className={statusCls[selectedRecipe.status]}>{selectedRecipe.status}</span></div>
-                  <div><p className="text-muted-foreground">Cost per Batch</p><p className="font-semibold">KES {selectedRecipe.costPerBatch.toLocaleString()}</p></div>
+                  <div><p className="text-muted-foreground">Cost per Batch</p><p className="font-semibold">RWF {selectedRecipe.costPerBatch.toLocaleString()}</p></div>
                   <div><p className="text-muted-foreground">Last Modified</p><p>{selectedRecipe.lastModified}</p></div>
                   <div className="col-span-2"><p className="text-muted-foreground">Notes</p><p className="text-sm">{selectedRecipe.notes}</p></div>
                 </div>

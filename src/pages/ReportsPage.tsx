@@ -24,10 +24,10 @@ export default function ReportsPage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="stat-card"><p className="text-xs text-muted-foreground uppercase">Production (Month)</p><p className="text-xl font-heading font-bold mt-1">{productionBatches.length} batches</p></div>
-        <div className="stat-card"><p className="text-xs text-muted-foreground uppercase">Material Usage</p><p className="text-xl font-heading font-bold mt-1">KES {materialUsageData.reduce((a, m) => a + m.cost, 0).toLocaleString()}</p></div>
+        <div className="stat-card"><p className="text-xs text-muted-foreground uppercase">Material Usage</p><p className="text-xl font-heading font-bold mt-1">RWF {materialUsageData.reduce((a, m) => a + m.cost, 0).toLocaleString()}</p></div>
         <div className="stat-card"><p className="text-xs text-muted-foreground uppercase">QC Pass Rate</p><p className="text-xl font-heading font-bold mt-1 text-primary">{Math.round((passCount / (passCount + failCount)) * 100)}%</p></div>
-        <div className="stat-card"><p className="text-xs text-muted-foreground uppercase">Inventory Value</p><p className="text-xl font-heading font-bold mt-1">KES {(totalRawValue + totalFinishedValue).toLocaleString()}</p></div>
-        <div className="stat-card"><p className="text-xs text-muted-foreground uppercase">Sales Revenue</p><p className="text-xl font-heading font-bold mt-1">KES {salesOrders.reduce((a, o) => a + o.total, 0).toLocaleString()}</p></div>
+        <div className="stat-card"><p className="text-xs text-muted-foreground uppercase">Inventory Value</p><p className="text-xl font-heading font-bold mt-1">RWF {(totalRawValue + totalFinishedValue).toLocaleString()}</p></div>
+        <div className="stat-card"><p className="text-xs text-muted-foreground uppercase">Sales Revenue</p><p className="text-xl font-heading font-bold mt-1">RWF {salesOrders.reduce((a, o) => a + o.total, 0).toLocaleString()}</p></div>
       </div>
 
       <Tabs defaultValue="production">
@@ -52,7 +52,7 @@ export default function ReportsPage() {
           <div className="bg-card border rounded-lg p-5">
             <h3 className="font-heading font-semibold mb-4">Raw Material Usage & Cost</h3>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={materialUsageData} layout="vertical"><CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" /><XAxis type="number" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" /><YAxis dataKey="name" type="category" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" width={140} /><Tooltip /><Bar dataKey="cost" fill="hsl(var(--primary))" name="Cost (KES)" radius={[0,4,4,0]} /></BarChart>
+              <BarChart data={materialUsageData} layout="vertical"><CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" /><XAxis type="number" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" /><YAxis dataKey="name" type="category" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" width={140} /><Tooltip /><Bar dataKey="cost" fill="hsl(var(--primary))" name="Cost (RWF)" radius={[0,4,4,0]} /></BarChart>
             </ResponsiveContainer>
           </div>
         </TabsContent>
@@ -79,9 +79,9 @@ export default function ReportsPage() {
             <table className="data-table w-full text-sm">
               <thead><tr className="border-b bg-muted/50"><th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase">Category</th><th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase">Items</th><th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase">Total Value</th></tr></thead>
               <tbody>
-                <tr className="border-b"><td className="px-4 py-3 font-medium">Raw Materials</td><td className="px-4 py-3">{rawMaterials.length}</td><td className="px-4 py-3 font-semibold">KES {totalRawValue.toLocaleString()}</td></tr>
-                <tr className="border-b"><td className="px-4 py-3 font-medium">Finished Goods</td><td className="px-4 py-3">{finishedProducts.length}</td><td className="px-4 py-3 font-semibold">KES {totalFinishedValue.toLocaleString()}</td></tr>
-                <tr className="bg-muted/50 font-bold"><td className="px-4 py-3" colSpan={2}>Combined Total</td><td className="px-4 py-3">KES {(totalRawValue + totalFinishedValue).toLocaleString()}</td></tr>
+                <tr className="border-b"><td className="px-4 py-3 font-medium">Raw Materials</td><td className="px-4 py-3">{rawMaterials.length}</td><td className="px-4 py-3 font-semibold">RWF {totalRawValue.toLocaleString()}</td></tr>
+                <tr className="border-b"><td className="px-4 py-3 font-medium">Finished Goods</td><td className="px-4 py-3">{finishedProducts.length}</td><td className="px-4 py-3 font-semibold">RWF {totalFinishedValue.toLocaleString()}</td></tr>
+                <tr className="bg-muted/50 font-bold"><td className="px-4 py-3" colSpan={2}>Combined Total</td><td className="px-4 py-3">RWF {(totalRawValue + totalFinishedValue).toLocaleString()}</td></tr>
               </tbody>
             </table>
           </div>
@@ -91,7 +91,7 @@ export default function ReportsPage() {
           <div className="bg-card border rounded-lg p-5">
             <h3 className="font-heading font-semibold mb-4">Monthly Revenue</h3>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={salesChartData}><CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" /><XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" /><YAxis tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" /><Tooltip /><Bar dataKey="revenue" fill="hsl(var(--primary))" name="Revenue (KES)" radius={[4,4,0,0]} /></BarChart>
+              <BarChart data={salesChartData}><CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" /><XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" /><YAxis tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" /><Tooltip /><Bar dataKey="revenue" fill="hsl(var(--primary))" name="Revenue (RWF)" radius={[4,4,0,0]} /></BarChart>
             </ResponsiveContainer>
           </div>
         </TabsContent>
