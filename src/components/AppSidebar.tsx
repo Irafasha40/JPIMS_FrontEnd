@@ -4,6 +4,8 @@ import {
   BookOpen, Truck, BarChart3, Bell, Users, Shield, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { useState } from "react";
+import { useRole } from "@/contexts/RoleContext";
+import { roleMenuConfig } from "@/lib/mockData";
 import whizuppLogo from "@/assets/whizupp-logo.png";
 
 const modules = [
@@ -24,6 +26,10 @@ const modules = [
 export default function AppSidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+  const { role } = useRole();
+
+  const allowedPaths = roleMenuConfig[role] || roleMenuConfig.administrator;
+  const filteredModules = modules.filter(m => allowedPaths.includes(m.path));
 
   return (
     <aside
@@ -41,7 +47,7 @@ export default function AppSidebar() {
       </div>
 
       <nav className="flex-1 py-3 space-y-0.5 overflow-y-auto">
-        {modules.map((m) => {
+        {filteredModules.map((m) => {
           const isActive = location.pathname === m.path;
           return (
             <NavLink
