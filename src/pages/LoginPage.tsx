@@ -5,6 +5,7 @@ import { Eye, EyeOff, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { authApi } from "@/lib/api";
 import whizuppLogo from "@/assets/whizupp-logo.png";
 
 export default function LoginPage() {
@@ -15,39 +16,53 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showMfa, setShowMfa] = useState(false);
   const [mfaCode, setMfaCode] = useState("");
+  const [mfaToken, setMfaToken] = useState("");
   const [attempts, setAttempts] = useState(0);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
-    setTimeout(() => {
-      setLoading(false);
-      if (email === "admin@whizupp.co.ke" && password === "password") {
+    try {
+      const { data } = await authApi.login({ email, password });
+      if (data.mfaRequired) {
+        setMfaToken(data.mfaToken || "");
         setShowMfa(true);
-      } else if (email && password === "password") {
+      } else {
+        localStorage.setItem("access_token", data.accessToken);
+        localStorage.setItem("refresh_token", data.refreshToken);
         setIsLoggedIn(true);
         navigate("/");
-      } else {
-        const newAttempts = attempts + 1;
-        setAttempts(newAttempts);
-        if (newAttempts >= 5) setError("Account locked. Too many failed attempts. Contact administrator.");
-        else if (newAttempts >= 3) setError(`Invalid credentials. ${5 - newAttempts} attempts remaining before lockout.`);
-        else setError("Invalid email or password.");
       }
-    }, 800);
+    } catch (err: any) {
+      const newAttempts = attempts + 1;
+      setAttempts(newAttempts);
+      const msg = err.response?.data?.message || err.response?.data?.error;
+      if (newAttempts >= 5) setError("Account locked. Too many failed attempts. Contact administrator.");
+      else if (newAttempts >= 3) setError(msg || `Invalid credentials. ${5 - newAttempts} attempts remaining before lockout.`);
+      else setError(msg || "Invalid email or password.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleMfa = (e: React.FormEvent) => {
+  const handleMfa = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    setError("");
+    try {
+      const { data } = await authApi.verifyMfa({ mfaToken, code: mfaCode });
+      localStorage.setItem("access_token", data.accessToken);
+      localStorage.setItem("refresh_token", data.refreshToken);
       setIsLoggedIn(true);
       navigate("/");
-    }, 600);
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Invalid MFA code. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -98,19 +113,16 @@ export default function LoginPage() {
                 <Label htmlFor="mfa">Authentication Code</Label>
                 <Input id="mfa" type="text" placeholder="000000" maxLength={6} value={mfaCode} onChange={e => setMfaCode(e.target.value.replace(/\D/g, ""))} className="text-center text-lg tracking-[0.5em]" />
               </div>
+              {error && <p className="text-sm text-destructive bg-destructive/10 rounded-md p-2">{error}</p>}
               <Button type="submit" className="w-full" disabled={loading || mfaCode.length < 6}>
                 {loading ? "Verifying..." : "Verify"}
               </Button>
-              <button type="button" className="w-full text-sm text-muted-foreground hover:text-foreground" onClick={() => setShowMfa(false)}>
+              <button type="button" className="w-full text-sm text-muted-foreground hover:text-foreground" onClick={() => { setShowMfa(false); setError(""); }}>
                 ← Back to login
               </button>
             </form>
           )}
         </div>
-
-        <p className="text-center text-xs text-muted-foreground mt-6">
-          Hint: use any email with password "password" to log in. Use admin@whizupp.co.ke for MFA flow.
-        </p>
       </div>
     </div>
   );
