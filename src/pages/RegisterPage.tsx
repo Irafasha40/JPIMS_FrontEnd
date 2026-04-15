@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, CheckCircle, XCircle, Minus } from "lucide-react";
+import { Eye, EyeOff, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { authApi } from "@/lib/api";
 import whizuppLogo from "@/assets/whizupp-logo.png";
 
 function PasswordStrength({ password }: { password: string }) {
@@ -29,16 +30,28 @@ export default function RegisterPage() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [employeeId, setEmployeeId] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [department, setDepartment] = useState("");
+  const [role, setRole] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    setError("");
+    try {
+      await authApi.register({ fullName, employeeId, email, phone, department, role, password });
       setSubmitted(true);
-    }, 800);
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Registration failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (submitted) {
@@ -70,27 +83,27 @@ export default function RegisterPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Full Name *</Label>
-                <Input placeholder="John Doe" required />
+                <Input placeholder="John Doe" value={fullName} onChange={e => setFullName(e.target.value)} required />
               </div>
               <div className="space-y-2">
                 <Label>Employee ID *</Label>
-                <Input placeholder="EMP008" required />
+                <Input placeholder="EMP008" value={employeeId} onChange={e => setEmployeeId(e.target.value)} required />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Email Address *</Label>
-                <Input type="email" placeholder="you@whizupp.co.ke" required />
+                <Input type="email" placeholder="you@whizupp.co.ke" value={email} onChange={e => setEmail(e.target.value)} required />
               </div>
               <div className="space-y-2">
                 <Label>Phone Number *</Label>
-                <Input type="tel" placeholder="+254 7XX XXX XXX" required />
+                <Input type="tel" placeholder="+254 7XX XXX XXX" value={phone} onChange={e => setPhone(e.target.value)} required />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Department *</Label>
-                <Select>
+                <Select value={department} onValueChange={setDepartment}>
                   <SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="production">Production</SelectItem>
@@ -103,7 +116,7 @@ export default function RegisterPage() {
               </div>
               <div className="space-y-2">
                 <Label>Role *</Label>
-                <Select>
+                <Select value={role} onValueChange={setRole}>
                   <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="production_manager">Production Manager</SelectItem>
@@ -125,6 +138,7 @@ export default function RegisterPage() {
               </div>
               <PasswordStrength password={password} />
             </div>
+            {error && <p className="text-sm text-destructive bg-destructive/10 rounded-md p-2">{error}</p>}
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Creating account..." : "Create Account"}
             </Button>
