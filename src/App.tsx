@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -18,12 +18,25 @@ import NotificationsPage from "./pages/NotificationsPage";
 import UserManagementPage from "./pages/UserManagementPage";
 import SecurityAuditPage from "./pages/SecurityAuditPage";
 import LoginPage from "./pages/LoginPage";
+import FirstLoginPasswordPage from "./pages/FirstLoginPasswordPage";
 import RegisterPage from "./pages/RegisterPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ProfilePage from "./pages/ProfilePage";
-import NotFound from "./pages/NotFound";
+import { useRole } from "@/contexts/RoleContext";
 
 const queryClient = new QueryClient();
+
+function ProtectedRoute({ children }: { children: JSX.Element }) {
+  const { isLoggedIn } = useRole();
+  if (!isLoggedIn) return <Navigate to="/login" replace />;
+  return children;
+}
+
+function PublicOnlyRoute({ children }: { children: JSX.Element }) {
+  const { isLoggedIn } = useRole();
+  if (isLoggedIn) return <Navigate to="/" replace />;
+  return children;
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -31,12 +44,36 @@ const App = () => (
       <RoleProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
+        <BrowserRouter
+          future={{
+            v7_startTransition: true,
+            v7_relativeSplatPath: true,
+          }}
+        >
           <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-            <Route element={<AppLayout />}>
+            <Route
+              path="/first-login-password"
+              element={<PublicOnlyRoute><FirstLoginPasswordPage /></PublicOnlyRoute>}
+            />
+            <Route
+              path="/login"
+              element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>}
+            />
+            <Route
+              path="/register"
+              element={<PublicOnlyRoute><RegisterPage /></PublicOnlyRoute>}
+            />
+            <Route
+              path="/forgot-password"
+              element={<PublicOnlyRoute><ForgotPasswordPage /></PublicOnlyRoute>}
+            />
+            <Route
+              element={
+                <ProtectedRoute>
+                  <AppLayout />
+                </ProtectedRoute>
+              }
+            >
               <Route path="/" element={<DashboardPage />} />
               <Route path="/raw-materials" element={<RawMaterialsPage />} />
               <Route path="/production" element={<ProductionPage />} />
@@ -51,7 +88,7 @@ const App = () => (
               <Route path="/security" element={<SecurityAuditPage />} />
               <Route path="/profile" element={<ProfilePage />} />
             </Route>
-            <Route path="*" element={<NotFound />} />
+            <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </BrowserRouter>
       </RoleProvider>

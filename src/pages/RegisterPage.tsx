@@ -119,11 +119,11 @@ export default function RegisterPage() {
                 <Select value={role} onValueChange={setRole}>
                   <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="production_manager">Production Manager</SelectItem>
-                    <SelectItem value="inventory_manager">Inventory Manager</SelectItem>
-                    <SelectItem value="qc_officer">QC Officer</SelectItem>
-                    <SelectItem value="sales_staff">Sales Staff</SelectItem>
-                    <SelectItem value="administrator">Administrator</SelectItem>
+                    <SelectItem value="PRODUCTION_MANAGER">Production Manager</SelectItem>
+                    <SelectItem value="INVENTORY_MANAGER">Inventory Manager</SelectItem>
+                    <SelectItem value="QC_OFFICER">QC Officer</SelectItem>
+                    <SelectItem value="SALES_STAFF">Sales Staff</SelectItem>
+                    <SelectItem value="ADMINISTRATOR">Administrator</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useRole } from "@/contexts/RoleContext";
-import { roleMenuConfig } from "@/lib/mockData";
+import { roleMenuConfig } from "@/lib/roleConfig";
 import whizuppLogo from "@/assets/whizupp-logo.png";
 
 const modules = [

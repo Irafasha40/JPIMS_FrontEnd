@@ -7,6 +7,9 @@ const apiClient = axios.create({
 
 // Request interceptor: attach JWT token
 apiClient.interceptors.request.use((config) => {
+  if (config.url && config.url.length > 1 && config.url.endsWith("/")) {
+    config.url = config.url.replace(/\/+$/, "");
+  }
   const token = localStorage.getItem("access_token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;

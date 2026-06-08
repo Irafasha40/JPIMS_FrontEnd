@@ -27,9 +27,12 @@ export default function LoginPage() {
     setError("");
     try {
       const { data } = await authApi.login({ email, password });
-      if (data.mfaRequired) {
-        setMfaToken(data.mfaToken || "");
+      if (data.requiresMfa) {
+        setMfaToken(data.tempToken || "");
         setShowMfa(true);
+      } else if (data.requiresPasswordChange && data.tempToken) {
+        sessionStorage.setItem("whizupp_first_login_temp", data.tempToken);
+        navigate("/first-login-password", { state: { tempToken: data.tempToken }, replace: true });
       } else {
         localStorage.setItem("access_token", data.accessToken);
         localStorage.setItem("refresh_token", data.refreshToken);
@@ -53,7 +56,7 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
     try {
-      const { data } = await authApi.verifyMfa({ mfaToken, code: mfaCode });
+      const { data } = await authApi.verifyMfa({ tempToken: mfaToken, mfaCode });
       localStorage.setItem("access_token", data.accessToken);
       localStorage.setItem("refresh_token", data.refreshToken);
       setIsLoggedIn(true);
