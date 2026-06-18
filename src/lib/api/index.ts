@@ -70,7 +70,13 @@ export const batchesApi = {
   syncFinishedGoods: () =>
     apiClient.post<{ transferred: number }>(`${batchesBase}/sync-finished-goods`),
 };
-export const ordersApi = withListPage("/orders");
+export const ordersApi = {
+  ...withListPage("/orders"),
+  confirm: (id: string) => apiClient.put<Record<string, unknown>>(`/orders/${id}/confirm`),
+  ship: (id: string) => apiClient.put<Record<string, unknown>>(`/orders/${id}/ship`),
+  deliver: (id: string) => apiClient.put<Record<string, unknown>>(`/orders/${id}/deliver`),
+  cancel: (id: string) => apiClient.put<Record<string, unknown>>(`/orders/${id}/cancel`),
+};
 export const qualityApi = {
   ...withListPage("/quality"),
   pending: (params?: Record<string, unknown>) =>
@@ -95,6 +101,8 @@ export const auditApi = {
     apiClient.get<SpringPage<Record<string, unknown>>>(`${auditBase}/anomalies`, { params }),
   modulePage: (module: string, params?: Record<string, unknown>) =>
     apiClient.get<SpringPage<Record<string, unknown>>>(`${auditBase}/module/${encodeURIComponent(module)}`, { params }),
+  exportLogs: () =>
+    apiClient.get(`${auditBase}/export`, { responseType: "blob" }),
 };
 
 export const reportsApi = {
@@ -102,14 +110,12 @@ export const reportsApi = {
     apiClient.get<Record<string, unknown>>("/reports/production", { params }),
   quality: (params?: Record<string, unknown>) =>
     apiClient.get<Record<string, unknown>>("/reports/quality", { params }),
-  rawInventory: (params?: Record<string, unknown>) =>
-    apiClient.get<Record<string, unknown>>("/reports/inventory/raw-materials", { params }),
-  finishedInventory: (params?: Record<string, unknown>) =>
-    apiClient.get<Record<string, unknown>>("/reports/inventory/finished-goods", { params }),
+  inventory: (params?: Record<string, unknown>) =>
+    apiClient.get<Record<string, unknown>>("/reports/inventory", { params }),
   sales: (params?: Record<string, unknown>) =>
     apiClient.get<Record<string, unknown>>("/reports/sales", { params }),
-  waste: (params?: Record<string, unknown>) =>
-    apiClient.get<Record<string, unknown>>("/reports/waste", { params }),
+  wastage: (params?: Record<string, unknown>) =>
+    apiClient.get<Record<string, unknown>>("/reports/wastage", { params }),
   scheduledList: (params?: Record<string, unknown>) =>
     apiClient.get<SpringPage<Record<string, unknown>>>("/reports/scheduled", { params }),
 };
@@ -130,6 +136,9 @@ export interface DashboardPayload {
 
 export const dashboardApi = {
   getDashboard: () => apiClient.get<DashboardPayload>("/dashboard"),
+  getProductionSummary: () => apiClient.get<Record<string, number>>("/dashboard/production-summary"),
+  getInventorySummary: () => apiClient.get<Record<string, number>>("/dashboard/inventory-summary"),
+  getSalesSummary: () => apiClient.get<Record<string, number>>("/dashboard/sales-summary"),
 };
 
 export { authApi, type AuthMeResponse } from "./auth";

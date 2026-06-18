@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import Breadcrumb from "@/components/Breadcrumb";
 import Pagination from "@/components/Pagination";
 import { auditApi, usersApi } from "@/lib/api";
+import { toast } from "sonner";
 
 const actionCls: Record<string, string> = {
   create: "status-badge-success",
@@ -72,6 +73,26 @@ export default function SecurityAuditPage() {
   const [anomalyRows, setAnomalyRows] = useState<AuditRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const res = await auditApi.exportLogs();
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `audit_log_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success("Audit log exported successfully.");
+    } catch (e: unknown) {
+      toast.error("Could not export audit logs.");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -151,9 +172,9 @@ export default function SecurityAuditPage() {
           <h1 className="text-2xl font-heading font-bold">Security & Audit</h1>
           <p className="text-sm text-muted-foreground">Monitor security, login activity, and audit trails</p>
         </div>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" onClick={() => void handleExport()} disabled={exporting}>
           <Download className="w-4 h-4 mr-1" />
-          Export Audit Log
+          {exporting ? "Exporting..." : "Export Audit Log"}
         </Button>
       </div>
 

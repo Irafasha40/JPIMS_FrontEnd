@@ -24,61 +24,111 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden p-4">
+      {/* Decorative gradient blobs */}
+      <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] max-w-[600px] rounded-full bg-primary/10 blur-[120px] pointer-events-none animate-pulse duration-[8000ms]" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] max-w-[600px] rounded-full bg-secondary/10 blur-[120px] pointer-events-none animate-pulse duration-[6000ms]" />
+
+      <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-8">
-          <img src={whizuppLogo} alt="Whiz Upp" className="w-12 h-12 mx-auto mb-3 object-contain" />
+          <div className="inline-flex items-center justify-center p-3 bg-white/80 dark:bg-card/80 rounded-2xl shadow-md border border-white/50 dark:border-white/10 mb-4 transition-transform hover:scale-105 duration-300">
+            <img src={whizuppLogo} alt="Whiz Upp" className="w-12 h-12 object-contain" />
+          </div>
         </div>
-        <div className="bg-card border rounded-lg p-6 shadow-sm">
+        
+        <div className="glass-card rounded-2xl p-8 border shadow-xl relative overflow-hidden">
+          {/* Top accent line */}
+          <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-primary-to-secondary" />
+
           {step === "request" && (
-            <form onSubmit={handleRequest} className="space-y-4">
+            <form onSubmit={handleRequest} className="space-y-5">
               <div className="text-center">
-                <KeyRound className="w-10 h-10 mx-auto text-primary mb-2" />
-                <h2 className="font-heading font-bold text-xl">Forgot Password?</h2>
-                <p className="text-sm text-muted-foreground mt-1">Enter your email to receive a reset link</p>
+                <div className="w-12 h-12 mx-auto bg-primary/10 rounded-2xl flex items-center justify-center mb-3">
+                  <KeyRound className="w-6 h-6 text-primary" />
+                </div>
+                <h2 className="font-heading font-bold text-xl text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">Forgot Password?</h2>
+                <p className="text-sm text-muted-foreground mt-1.5 font-medium">Enter your email to receive a reset link</p>
               </div>
               <div className="space-y-2">
-                <Label>Email Address</Label>
-                <Input type="email" placeholder="you@whizupp.co.ke" value={email} onChange={e => setEmail(e.target.value)} required />
+                <Label className="text-xs font-semibold tracking-wide">Email Address</Label>
+                <Input
+                  type="email"
+                  placeholder="you@whizupp.co.ke"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  required
+                  className="bg-background/50 border-muted focus:border-primary/50 transition-colors"
+                />
               </div>
-              <Button type="submit" className="w-full" disabled={loading}>
+              <Button
+                type="submit"
+                className="w-full bg-gradient-primary-to-secondary hover:brightness-105 transition-all duration-300 text-white font-bold tracking-wide shadow-lg shadow-primary/10 rounded-lg py-2.5"
+                disabled={loading}
+              >
                 {loading ? "Sending..." : "Send Reset Link"}
               </Button>
-              <p className="text-center text-sm"><Link to="/login" className="text-muted-foreground hover:text-foreground"><ArrowLeft className="w-3 h-3 inline mr-1" />Back to login</Link></p>
+              <p className="text-center text-sm font-semibold pt-2">
+                <Link to="/login" className="text-primary hover:text-primary/80 transition-colors">
+                  <ArrowLeft className="w-3.5 h-3.5 inline mr-1.5 align-middle" />
+                  Back to login
+                </Link>
+              </p>
             </form>
           )}
           {step === "sent" && (
-            <div className="text-center space-y-4">
-              <Mail className="w-12 h-12 mx-auto text-primary" />
-              <h2 className="font-heading font-bold text-xl">Check Your Email</h2>
-              <p className="text-sm text-muted-foreground">We sent a reset link to <strong>{email}</strong></p>
-              <Button variant="outline" onClick={() => setStep("reset")} className="w-full">I have the link (simulate)</Button>
-              <button className="text-sm text-muted-foreground hover:text-foreground" onClick={() => setStep("request")}>Didn't receive? Try again</button>
+            <div className="text-center space-y-4 py-2">
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-2 border border-primary/20">
+                <Mail className="w-8 h-8 text-primary" />
+              </div>
+              <h2 className="font-heading font-bold text-xl text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">Check Your Email</h2>
+              <p className="text-sm text-muted-foreground leading-relaxed">We sent a reset link to <strong className="text-foreground">{email}</strong></p>
+              <Button variant="outline" onClick={() => setStep("reset")} className="w-full border-muted hover:bg-muted font-semibold mt-4">I have the link (simulate)</Button>
+              <button className="text-sm text-primary hover:text-primary/80 font-bold transition-colors block mx-auto" onClick={() => setStep("request")}>Didn't receive? Try again</button>
             </div>
           )}
           {step === "reset" && (
-            <form onSubmit={handleReset} className="space-y-4">
+            <form onSubmit={handleReset} className="space-y-5">
               <div className="text-center">
-                <h2 className="font-heading font-bold text-xl">Set New Password</h2>
-                <p className="text-sm text-muted-foreground mt-1">Enter your new password below</p>
+                <h2 className="font-heading font-bold text-xl text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">Set New Password</h2>
+                <p className="text-sm text-muted-foreground mt-1.5 font-medium">Enter your new password below</p>
               </div>
               <div className="space-y-2">
-                <Label>New Password</Label>
-                <Input type="password" placeholder="New password" required />
+                <Label className="text-xs font-semibold tracking-wide">New Password</Label>
+                <Input
+                  type="password"
+                  placeholder="New password"
+                  required
+                  className="bg-background/50 border-muted focus:border-primary/50 transition-colors"
+                />
               </div>
               <div className="space-y-2">
-                <Label>Confirm Password</Label>
-                <Input type="password" placeholder="Confirm new password" required />
+                <Label className="text-xs font-semibold tracking-wide">Confirm Password</Label>
+                <Input
+                  type="password"
+                  placeholder="Confirm new password"
+                  required
+                  className="bg-background/50 border-muted focus:border-primary/50 transition-colors"
+                />
               </div>
-              <Button type="submit" className="w-full" disabled={loading}>{loading ? "Updating..." : "Update Password"}</Button>
+              <Button
+                type="submit"
+                className="w-full bg-gradient-primary-to-secondary hover:brightness-105 transition-all duration-300 text-white font-bold tracking-wide shadow-lg shadow-primary/10 rounded-lg py-2.5"
+                disabled={loading}
+              >
+                {loading ? "Updating..." : "Update Password"}
+              </Button>
             </form>
           )}
           {step === "done" && (
-            <div className="text-center space-y-4">
-              <CheckCircle className="w-12 h-12 mx-auto text-primary" />
-              <h2 className="font-heading font-bold text-xl">Password Updated</h2>
-              <p className="text-sm text-muted-foreground">Your password has been successfully reset.</p>
-              <Button asChild className="w-full"><Link to="/login">Sign In</Link></Button>
+            <div className="text-center space-y-4 py-2">
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-2 border border-primary/20">
+                <CheckCircle className="w-8 h-8 text-primary" />
+              </div>
+              <h2 className="font-heading font-bold text-xl text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">Password Updated</h2>
+              <p className="text-sm text-muted-foreground leading-relaxed">Your password has been successfully reset.</p>
+              <Button asChild className="w-full bg-gradient-primary-to-secondary hover:brightness-105 transition-all duration-300 text-white font-bold tracking-wide mt-4">
+                <Link to="/login">Sign In</Link>
+              </Button>
             </div>
           )}
         </div>

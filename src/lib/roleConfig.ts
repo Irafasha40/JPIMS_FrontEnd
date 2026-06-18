@@ -31,5 +31,5 @@ export const roleMenuConfig: Record<UserRole, string[]> = {
   production_manager: ["/", "/raw-materials", "/production", "/quality-control", "/recipes", "/reports"],
   inventory_manager: ["/", "/raw-materials", "/finished-products", "/suppliers", "/reports"],
   qc_officer: ["/", "/quality-control", "/production", "/reports"],
-  sales_staff: ["/", "/sales", "/finished-products", "/notifications"],
+  sales_staff: ["/", "/sales", "/finished-products", "/notifications", "/reports"],
 };

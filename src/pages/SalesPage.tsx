@@ -22,6 +22,7 @@ type LineItem = { name: string; qty: number; unitPrice: number; total: number };
 
 type OrderRow = {
   id: string;
+  orderNumber: string;
   customer: string;
   items: string;
   total: number;
@@ -43,7 +44,8 @@ function mapOrder(o: Record<string, unknown>): OrderRow {
       }))
     : [{ name: "—", qty: 0, unitPrice: 0, total: 0 }];
   return {
-    id: String(o.orderNumber ?? o.id ?? ""),
+    id: String(o.id ?? o.orderNumber ?? ""),
+    orderNumber: String(o.orderNumber ?? o.id ?? ""),
     customer: String(o.customerName ?? o.customer ?? "—"),
     items: String(o.itemCount ?? products.length),
     total: Number(o.totalAmount ?? o.total ?? 0),
@@ -69,7 +71,7 @@ function mapCustomer(c: Record<string, unknown>): CustomerRow {
   return {
     id: String(c.id ?? ""),
     name: String(c.name ?? ""),
-    contact: String(c.contact ?? "—"),
+    contact: String(c.contact ?? c.contactPerson ?? "—"),
     phone: String(c.phone ?? "—"),
     email: String(c.email ?? "—"),
     totalOrders: Number(c.totalOrders ?? 0),
@@ -77,13 +79,15 @@ function mapCustomer(c: Record<string, unknown>): CustomerRow {
   };
 }
 
-type ProductPick = { id: string; name: string; stock: number };
+type ProductPick = { id: string; name: string; stock: number; unitCost?: number; lotNumber?: string };
 
 function mapFinished(p: Record<string, unknown>): ProductPick {
   return {
     id: String(p.id ?? ""),
-    name: String(p.name ?? p.productName ?? "Product"),
-    stock: Number(p.quantityOnHand ?? p.stock ?? p.currentStock ?? 0),
+    name: `${p.productName ?? p.name ?? "Product"} (Lot: ${p.lotNumber ?? "N/A"})`,
+    stock: Number(p.quantity ?? p.quantityOnHand ?? p.stock ?? p.currentStock ?? 0),
+    unitCost: Number(p.unitCost ?? 0),
+    lotNumber: String(p.lotNumber ?? ""),
   };
 }
 
@@ -99,6 +103,35 @@ export default function SalesPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<OrderRow | null>(null);
   const [invoiceOpen, setInvoiceOpen] = useState(false);
+
+  // Form State
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
+  const [orderDate, setOrderDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [paymentMethod, setPaymentMethod] = useState<string>("CASH");
+  const [notes, setNotes] = useState<string>("");
+  
+  type FormLineItem = {
+    finishedProductId: string;
+    quantity: number;
+    unitPrice: number;
+  };
+  const [lineItems, setLineItems] = useState<FormLineItem[]>([
+    { finishedProductId: "", quantity: 1, unitPrice: 0 }
+  ]);
+
+  // Inline customer creation state
+  const [isCreatingCustomer, setIsCreatingCustomer] = useState(false);
+  const [newCustomerName, setNewCustomerName] = useState("");
+  const [newCustomerContact, setNewCustomerContact] = useState("");
+  const [newCustomerPhone, setNewCustomerPhone] = useState("");
+  const [newCustomerEmail, setNewCustomerEmail] = useState("");
+  const [newCustomerAddress, setNewCustomerAddress] = useState("");
+  const [customerSaving, setCustomerSaving] = useState(false);
+  const [customerError, setCustomerError] = useState<string | null>(null);
+
+  const [orderSubmitting, setOrderSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [transitionLoading, setTransitionLoading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -132,9 +165,160 @@ export default function SalesPage() {
     };
   }, []);
 
+  const addLineItem = () => {
+    setLineItems([...lineItems, { finishedProductId: "", quantity: 1, unitPrice: 0 }]);
+  };
+
+  const removeLineItem = (index: number) => {
+    if (lineItems.length > 1) {
+      setLineItems(lineItems.filter((_, i) => i !== index));
+    } else {
+      setLineItems([{ finishedProductId: "", quantity: 1, unitPrice: 0 }]);
+    }
+  };
+
+  const updateLineItem = (index: number, field: keyof FormLineItem, value: string | number) => {
+    const next = [...lineItems];
+    if (field === "finishedProductId") {
+      next[index].finishedProductId = String(value);
+      const prod = finishedProducts.find((p) => p.id === value);
+      if (prod) {
+        next[index].unitPrice = prod.unitCost ?? 0;
+      }
+    } else if (field === "quantity") {
+      next[index].quantity = Number(value);
+    } else if (field === "unitPrice") {
+      next[index].unitPrice = Number(value);
+    }
+    setLineItems(next);
+  };
+
+  const grandTotal = lineItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+
+  const handleCreateCustomer = async () => {
+    if (!newCustomerName.trim()) {
+      setCustomerError("Customer name is required");
+      return;
+    }
+    if (!newCustomerContact.trim()) {
+      setCustomerError("Contact person is required");
+      return;
+    }
+    setCustomerSaving(true);
+    setCustomerError(null);
+    try {
+      const res = await customersApi.create({
+        name: newCustomerName,
+        contact: newCustomerContact,
+        phone: newCustomerPhone || undefined,
+        email: newCustomerEmail || undefined,
+        address: newCustomerAddress || undefined,
+      });
+      const newCust = mapCustomer(res.data as Record<string, unknown>);
+      setCustomers((prev) => [...prev, newCust]);
+      setSelectedCustomerId(newCust.id);
+      setIsCreatingCustomer(false);
+      setNewCustomerName("");
+      setNewCustomerContact("");
+      setNewCustomerPhone("");
+      setNewCustomerEmail("");
+      setNewCustomerAddress("");
+    } catch (err: any) {
+      const msg = err.response?.data?.message || "Failed to create customer.";
+      setCustomerError(msg);
+    } finally {
+      setCustomerSaving(false);
+    }
+  };
+
+  const handleCreateOrder = async (confirmImmediately: boolean) => {
+    if (!selectedCustomerId) {
+      setFormError("Please select a customer.");
+      return;
+    }
+    const invalidLines = lineItems.some((li) => !li.finishedProductId || li.quantity <= 0);
+    if (invalidLines) {
+      setFormError("All line items must have a product selected and quantity > 0.");
+      return;
+    }
+    setOrderSubmitting(true);
+    setFormError(null);
+    try {
+      const res = await ordersApi.create({
+        customerId: selectedCustomerId,
+        paymentMethod: paymentMethod,
+        notes: notes || undefined,
+        lineItems: lineItems.map((li) => ({
+          finishedProductId: li.finishedProductId,
+          quantity: li.quantity,
+          unitPrice: li.unitPrice,
+        })),
+      });
+
+      const orderData = res.data as Record<string, unknown>;
+      const createdOrderId = String(orderData.id ?? "");
+
+      if (confirmImmediately && createdOrderId) {
+        await ordersApi.confirm(createdOrderId);
+      }
+
+      const [oRes, cRes] = await Promise.all([
+        ordersApi.listPage({ size: 200, sort: "createdAt,desc" }),
+        customersApi.listPage({ size: 200, sort: "name,asc" }),
+      ]);
+      setOrders((oRes.data.content ?? []).map((row) => mapOrder(row)));
+      setCustomers((cRes.data.content ?? []).map((row) => mapCustomer(row)));
+
+      setCreateOpen(false);
+      setSelectedCustomerId("");
+      setPaymentMethod("CASH");
+      setNotes("");
+      setLineItems([{ finishedProductId: "", quantity: 1, unitPrice: 0 }]);
+    } catch (err: any) {
+      const msg = err.response?.data?.message || "Failed to create order.";
+      setFormError(msg);
+    } finally {
+      setOrderSubmitting(false);
+    }
+  };
+
+  const handleStatusTransition = async (action: "confirm" | "ship" | "deliver" | "cancel") => {
+    if (!selectedOrder) return;
+    setTransitionLoading(true);
+    try {
+      if (action === "confirm") {
+        await ordersApi.confirm(selectedOrder.id);
+      } else if (action === "ship") {
+        await ordersApi.ship(selectedOrder.id);
+      } else if (action === "deliver") {
+        await ordersApi.deliver(selectedOrder.id);
+      } else if (action === "cancel") {
+        await ordersApi.cancel(selectedOrder.id);
+      }
+      
+      const oRes = await ordersApi.listPage({ size: 200, sort: "createdAt,desc" });
+      const updatedOrders = (oRes.data.content ?? []).map((row) => mapOrder(row));
+      setOrders(updatedOrders);
+
+      const updatedOrder = updatedOrders.find((o) => o.id === selectedOrder.id);
+      if (updatedOrder) {
+        setSelectedOrder(updatedOrder);
+      } else {
+        setSelectedOrder(null);
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || `Failed to ${action} order.`;
+      alert(msg);
+    } finally {
+      setTransitionLoading(false);
+    }
+  };
+
   const filtered = orders.filter(
     (o) =>
-      o.customer.toLowerCase().includes(search.toLowerCase()) || o.id.toLowerCase().includes(search.toLowerCase())
+      o.customer.toLowerCase().includes(search.toLowerCase()) || 
+      o.id.toLowerCase().includes(search.toLowerCase()) ||
+      o.orderNumber.toLowerCase().includes(search.toLowerCase())
   );
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
@@ -147,112 +331,272 @@ export default function SalesPage() {
           <h1 className="text-2xl font-heading font-bold">Sales & Orders</h1>
           <p className="text-sm text-muted-foreground">Process orders, manage customers, and track sales</p>
         </div>
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <Dialog open={createOpen} onOpenChange={(open) => {
+          setCreateOpen(open);
+          if (!open) {
+            setIsCreatingCustomer(false);
+            setFormError(null);
+            setCustomerError(null);
+          }
+        }}>
           <DialogTrigger asChild>
             <Button size="sm">
               <Plus className="w-4 h-4 mr-1" />
               New Order
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create Sales Order</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Customer *</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select customer" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {customers.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex justify-between items-center">
+                    <Label>Customer *</Label>
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="h-auto p-0 text-xs text-primary"
+                      onClick={() => {
+                        setIsCreatingCustomer(!isCreatingCustomer);
+                        setCustomerError(null);
+                      }}
+                    >
+                      {isCreatingCustomer ? "Select Existing" : "+ New Customer"}
+                    </Button>
+                  </div>
+                  {!isCreatingCustomer ? (
+                    <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select customer" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {customers.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="border rounded-md p-3 bg-muted/40 space-y-2">
+                      <div className="text-xs font-semibold text-muted-foreground mb-1">Create New Customer</div>
+                      {customerError && <div className="text-xs text-destructive">{customerError}</div>}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <Label className="text-[10px] uppercase font-bold text-muted-foreground">Customer Name *</Label>
+                          <Input
+                            placeholder="e.g. Acme Corp"
+                            className="h-8 text-xs"
+                            value={newCustomerName}
+                            onChange={(e) => setNewCustomerName(e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[10px] uppercase font-bold text-muted-foreground">Contact Person *</Label>
+                          <Input
+                            placeholder="e.g. John Doe"
+                            className="h-8 text-xs"
+                            value={newCustomerContact}
+                            onChange={(e) => setNewCustomerContact(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <Label className="text-[10px] uppercase font-bold text-muted-foreground">Phone</Label>
+                          <Input
+                            placeholder="Phone number"
+                            className="h-8 text-xs"
+                            value={newCustomerPhone}
+                            onChange={(e) => setNewCustomerPhone(e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[10px] uppercase font-bold text-muted-foreground">Email</Label>
+                          <Input
+                            type="email"
+                            placeholder="email@example.com"
+                            className="h-8 text-xs"
+                            value={newCustomerEmail}
+                            onChange={(e) => setNewCustomerEmail(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] uppercase font-bold text-muted-foreground">Address</Label>
+                        <Input
+                          placeholder="Optional address"
+                          className="h-8 text-xs"
+                          value={newCustomerAddress}
+                          onChange={(e) => setNewCustomerAddress(e.target.value)}
+                        />
+                      </div>
+                      <div className="flex justify-end gap-2 pt-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs h-7 px-2"
+                          onClick={() => setIsCreatingCustomer(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="text-xs h-7 px-2"
+                          disabled={customerSaving}
+                          onClick={handleCreateCustomer}
+                        >
+                          {customerSaving ? "Saving..." : "Save Customer"}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>Order Date</Label>
-                  <Input type="date" />
+                  <Input 
+                    type="date"
+                    value={orderDate}
+                    onChange={(e) => setOrderDate(e.target.value)}
+                  />
                 </div>
               </div>
+
               <div className="space-y-2">
                 <Label>Line Items</Label>
                 <div className="border rounded-lg p-3 space-y-2">
                   <div className="grid grid-cols-12 gap-2 text-xs text-muted-foreground uppercase font-medium">
-                    <div className="col-span-4">Product</div>
-                    <div className="col-span-2">Batch</div>
+                    <div className="col-span-5">Product (Lot)</div>
+                    <div className="col-span-2">Stock</div>
                     <div className="col-span-2">Qty</div>
                     <div className="col-span-2">Price</div>
-                    <div className="col-span-2">Total</div>
+                    <div className="col-span-1 text-right">Total</div>
                   </div>
-                  <div className="grid grid-cols-12 gap-2 items-center">
-                    <div className="col-span-4">
-                      <Select>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Product" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {finishedProducts
-                            .filter((p) => p.stock > 0)
-                            .map((p) => (
-                              <SelectItem key={p.id} value={p.id}>
-                                {p.name}
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="col-span-2">
-                      <Input placeholder="Lot" className="text-xs" />
-                    </div>
-                    <div className="col-span-2">
-                      <Input type="number" placeholder="0" />
-                    </div>
-                    <div className="col-span-2">
-                      <Input type="number" placeholder="0" />
-                    </div>
-                    <div className="col-span-2 text-sm font-semibold">RWF 0</div>
-                  </div>
-                  <Button variant="ghost" size="sm" className="text-xs">
+
+                  {lineItems.map((item, index) => {
+                    const prod = finishedProducts.find((p) => p.id === item.finishedProductId);
+                    const availableStock = prod ? prod.stock : 0;
+                    return (
+                      <div key={index} className="grid grid-cols-12 gap-2 items-center">
+                        <div className="col-span-5 flex gap-1 items-center">
+                          {lineItems.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10"
+                              onClick={() => removeLineItem(index)}
+                            >
+                              &times;
+                            </Button>
+                          )}
+                          <Select
+                            value={item.finishedProductId}
+                            onValueChange={(val) => updateLineItem(index, "finishedProductId", val)}
+                          >
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Product" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {finishedProducts
+                                .filter((p) => p.stock > 0 || p.id === item.finishedProductId)
+                                .map((p) => (
+                                  <SelectItem key={p.id} value={p.id}>
+                                    {p.name}
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="col-span-2 text-xs text-muted-foreground font-mono">
+                          {availableStock}
+                        </div>
+                        <div className="col-span-2">
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            className="h-8 text-xs font-mono"
+                            min="1"
+                            max={availableStock}
+                            value={item.quantity}
+                            onChange={(e) => updateLineItem(index, "quantity", e.target.value)}
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            className="h-8 text-xs font-mono"
+                            min="0"
+                            value={item.unitPrice}
+                            onChange={(e) => updateLineItem(index, "unitPrice", e.target.value)}
+                          />
+                        </div>
+                        <div className="col-span-1 text-xs font-semibold font-mono text-right">
+                          {(item.quantity * item.unitPrice).toLocaleString()}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  <Button variant="ghost" size="sm" className="text-xs" onClick={addLineItem}>
                     <Plus className="w-3 h-3 mr-1" />
                     Add line item
                   </Button>
                 </div>
               </div>
+
               <div className="flex justify-between items-center bg-muted rounded-lg p-3">
                 <span className="text-sm text-muted-foreground">Grand Total</span>
-                <span className="font-heading font-bold text-lg">RWF 0</span>
+                <span className="font-heading font-bold text-lg">RWF {grandTotal.toLocaleString()}</span>
               </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Payment Method</Label>
-                  <Select>
+                  <Select value={paymentMethod} onValueChange={setPaymentMethod}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="cash">Cash</SelectItem>
-                      <SelectItem value="bank">Bank Transfer</SelectItem>
-                      <SelectItem value="credit">Credit</SelectItem>
+                      <SelectItem value="CASH">Cash</SelectItem>
+                      <SelectItem value="BANK_TRANSFER">Bank Transfer</SelectItem>
+                      <SelectItem value="CREDIT">Credit</SelectItem>
+                      <SelectItem value="OTHER">Other</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Notes</Label>
-                  <Input placeholder="Optional" />
+                  <Input 
+                    placeholder="Optional" 
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                  />
                 </div>
               </div>
+
+              {formError && (
+                <div className="text-sm font-medium text-destructive mt-2">{formError}</div>
+              )}
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setCreateOpen(false)}>
-                Save as Draft
+            <DialogFooter className="mt-4 gap-2">
+              <Button 
+                variant="outline" 
+                disabled={orderSubmitting}
+                onClick={() => handleCreateOrder(false)}
+              >
+                {orderSubmitting ? "Saving..." : "Save as Draft"}
               </Button>
-              <Button onClick={() => setCreateOpen(false)}>Confirm Order</Button>
+              <Button 
+                disabled={orderSubmitting}
+                onClick={() => handleCreateOrder(true)}
+              >
+                {orderSubmitting ? "Confirming..." : "Confirm Order"}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -300,7 +644,7 @@ export default function SalesPage() {
                   const s = statusMap[o.status] ?? statusMap.pending;
                   return (
                     <tr key={o.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                      <td className="px-4 py-3 text-xs font-mono text-muted-foreground">{o.id}</td>
+                      <td className="px-4 py-3 text-xs font-mono text-muted-foreground">{o.orderNumber}</td>
                       <td className="px-4 py-3 font-medium">{o.customer}</td>
                       <td className="px-4 py-3">{o.items}</td>
                       <td className="px-4 py-3 font-semibold">RWF {o.total.toLocaleString()}</td>
@@ -391,7 +735,7 @@ export default function SalesPage() {
         >
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>{invoiceOpen ? `Invoice — ${selectedOrder.id}` : `Order ${selectedOrder.id}`}</DialogTitle>
+              <DialogTitle>{invoiceOpen ? `Invoice — ${selectedOrder.orderNumber}` : `Order ${selectedOrder.orderNumber}`}</DialogTitle>
             </DialogHeader>
             {invoiceOpen ? (
               <div className="border rounded-lg p-6 space-y-4">
@@ -401,7 +745,7 @@ export default function SalesPage() {
                     <p className="text-xs text-muted-foreground">Juice Production & Distribution</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-mono font-semibold">{selectedOrder.id}</p>
+                    <p className="text-sm font-mono font-semibold">{selectedOrder.orderNumber}</p>
                     <p className="text-xs text-muted-foreground">{selectedOrder.date}</p>
                   </div>
                 </div>
@@ -485,14 +829,33 @@ export default function SalesPage() {
                     <p className="text-sm">{selectedOrder.notes}</p>
                   </div>
                 )}
-                <div className="flex gap-2">
-                  {selectedOrder.status === "pending" && <Button size="sm">Confirm Order</Button>}
-                  {selectedOrder.status === "confirmed" && <Button size="sm">Mark as Shipped</Button>}
-                  {selectedOrder.status === "shipped" && <Button size="sm">Mark as Delivered</Button>}
-                  <Button variant="outline" size="sm" onClick={() => setInvoiceOpen(true)}>
-                    <Printer className="w-4 h-4 mr-1" />
-                    Invoice
-                  </Button>
+                <div className="flex gap-2 justify-between w-full">
+                  <div className="flex gap-2">
+                    {selectedOrder.status === "pending" && (
+                      <Button size="sm" onClick={() => handleStatusTransition("confirm")} disabled={transitionLoading}>
+                        {transitionLoading ? "Confirming..." : "Confirm Order"}
+                      </Button>
+                    )}
+                    {selectedOrder.status === "confirmed" && (
+                      <Button size="sm" onClick={() => handleStatusTransition("ship")} disabled={transitionLoading}>
+                        {transitionLoading ? "Shipping..." : "Mark as Shipped"}
+                      </Button>
+                    )}
+                    {selectedOrder.status === "shipped" && (
+                      <Button size="sm" onClick={() => handleStatusTransition("deliver")} disabled={transitionLoading}>
+                        {transitionLoading ? "Delivering..." : "Mark as Delivered"}
+                      </Button>
+                    )}
+                    <Button variant="outline" size="sm" onClick={() => setInvoiceOpen(true)}>
+                      <Printer className="w-4 h-4 mr-1" />
+                      Invoice
+                    </Button>
+                  </div>
+                  {(selectedOrder.status === "pending" || selectedOrder.status === "confirmed") && (
+                    <Button variant="destructive" size="sm" onClick={() => handleStatusTransition("cancel")} disabled={transitionLoading}>
+                      {transitionLoading ? "Cancelling..." : "Cancel Order"}
+                    </Button>
+                  )}
                 </div>
               </div>
             )}

@@ -6,50 +6,56 @@
 
 @layer base {
   :root {
-    --background: 100 20% 97%;
-    --foreground: 150 30% 10%;
+    /* Rich organic backgrounds with subtle warmth */
+    --background: 140 25% 98%;
+    --foreground: 160 40% 11%;
 
     --card: 0 0% 100%;
-    --card-foreground: 150 30% 10%;
+    --card-foreground: 160 40% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 150 30% 10%;
+    --popover-foreground: 160 40% 11%;
 
-    --primary: 145 55% 36%;
+    /* Premium Emerald/Organic Green */
+    --primary: 142 76% 36%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 30 85% 55%;
+    /* Premium Vibrant Orange/Citrus */
+    --secondary: 24 95% 53%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 100 15% 92%;
-    --muted-foreground: 150 10% 45%;
+    --muted: 140 20% 94%;
+    --muted-foreground: 160 15% 40%;
 
-    --accent: 145 30% 90%;
-    --accent-foreground: 145 55% 25%;
+    /* Accent uses a soft lime-green background */
+    --accent: 142 60% 94%;
+    --accent-foreground: 142 76% 25%;
 
-    --destructive: 0 72% 51%;
+    /* Rose red for destructive actions */
+    --destructive: 350 89% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 100 15% 88%;
-    --input: 100 15% 88%;
-    --ring: 145 55% 36%;
+    --border: 140 20% 90%;
+    --input: 140 20% 90%;
+    --ring: 142 76% 36%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    --sidebar-background: 150 30% 12%;
-    --sidebar-foreground: 100 15% 85%;
-    --sidebar-primary: 145 55% 50%;
+    /* Sidebar Dark Theme - Forest Gradient Basis */
+    --sidebar-background: 162 47% 9%;
+    --sidebar-foreground: 140 20% 90%;
+    --sidebar-primary: 142 76% 45%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 150 25% 18%;
-    --sidebar-accent-foreground: 100 15% 90%;
-    --sidebar-border: 150 20% 20%;
-    --sidebar-ring: 145 55% 50%;
+    --sidebar-accent: 162 40% 15%;
+    --sidebar-accent-foreground: 142 60% 94%;
+    --sidebar-border: 162 30% 15%;
+    --sidebar-ring: 142 76% 45%;
 
-    --success: 145 60% 42%;
+    --success: 142 72% 29%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
-    --info: 210 80% 52%;
+    --info: 199 89% 48%;
     --info-foreground: 0 0% 100%;
 
     --font-heading: 'Space Grotesk', sans-serif;
@@ -57,33 +63,34 @@
   }
 
   .dark {
-    --background: 150 30% 6%;
-    --foreground: 100 15% 90%;
-    --card: 150 25% 10%;
-    --card-foreground: 100 15% 90%;
-    --popover: 150 25% 10%;
-    --popover-foreground: 100 15% 90%;
-    --primary: 145 55% 45%;
+    --background: 162 47% 6%;
+    --foreground: 140 20% 93%;
+    --card: 162 40% 9%;
+    --card-foreground: 140 20% 93%;
+    --popover: 162 40% 9%;
+    --popover-foreground: 140 20% 93%;
+    --primary: 142 72% 43%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 30 85% 55%;
+    --secondary: 24 95% 53%;
     --secondary-foreground: 0 0% 100%;
-    --muted: 150 20% 15%;
-    --muted-foreground: 100 10% 60%;
-    --accent: 150 25% 18%;
-    --accent-foreground: 145 55% 60%;
-    --destructive: 0 62.8% 30.6%;
+    --muted: 162 30% 14%;
+    --muted-foreground: 140 15% 65%;
+    --accent: 162 30% 15%;
+    --accent-foreground: 142 72% 65%;
+    --destructive: 350 89% 50%;
     --destructive-foreground: 0 0% 100%;
-    --border: 150 20% 18%;
-    --input: 150 20% 18%;
-    --ring: 145 55% 45%;
-    --sidebar-background: 150 30% 6%;
-    --sidebar-foreground: 100 15% 85%;
-    --sidebar-primary: 145 55% 50%;
+    --border: 162 25% 15%;
+    --input: 162 25% 15%;
+    --ring: 142 72% 43%;
+    
+    --sidebar-background: 162 47% 5%;
+    --sidebar-foreground: 140 20% 90%;
+    --sidebar-primary: 142 72% 43%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 150 25% 12%;
-    --sidebar-accent-foreground: 100 15% 90%;
-    --sidebar-border: 150 20% 14%;
-    --sidebar-ring: 145 55% 50%;
+    --sidebar-accent: 162 30% 12%;
+    --sidebar-accent-foreground: 140 20% 95%;
+    --sidebar-border: 162 25% 10%;
+    --sidebar-ring: 142 72% 43%;
   }
 }
 
@@ -95,6 +102,9 @@
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-body);
+    background-image: radial-gradient(circle at 100% 0%, rgba(34, 197, 94, 0.05) 0%, transparent 40%),
+                      radial-gradient(circle at 0% 100%, rgba(249, 115, 22, 0.03) 0%, transparent 40%);
+    background-attachment: fixed;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -103,12 +113,30 @@
 }
 
 @layer components {
+  /* Elevated glassmorphic stat card */
   .stat-card {
-    @apply bg-card rounded-lg border p-5 shadow-sm transition-all hover:shadow-md;
+    @apply relative overflow-hidden bg-card rounded-xl border p-5 shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1;
+    background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.5) 100%);
+    backdrop-filter: blur(8px);
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(to bottom, hsl(var(--primary)), hsl(var(--secondary)));
+    opacity: 0.8;
+  }
+
+  .dark .stat-card {
+    background-image: linear-gradient(135deg, rgba(16, 28, 23, 0.7) 0%, rgba(9, 17, 14, 0.8) 100%);
   }
 
   .module-header {
-    @apply flex items-center justify-between pb-4 border-b mb-6;
+    @apply flex items-center justify-between pb-5 border-b mb-6;
   }
 
   .data-table {
@@ -116,22 +144,42 @@
   }
 
   .status-badge {
-    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+    @apply inline-flex items-center rounded-full px-3 py-0.5 text-xs font-semibold tracking-wider uppercase border;
   }
 
   .status-badge-success {
-    @apply status-badge bg-accent text-accent-foreground;
+    @apply status-badge bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30;
   }
 
   .status-badge-warning {
-    @apply status-badge bg-secondary/20 text-secondary;
+    @apply status-badge bg-amber-500/10 text-amber-600 border-amber-500/20 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/30;
   }
 
   .status-badge-danger {
-    @apply status-badge bg-destructive/15 text-destructive;
+    @apply status-badge bg-rose-500/10 text-rose-600 border-rose-500/20 dark:bg-rose-500/20 dark:text-rose-400 dark:border-rose-500/30;
   }
 
   .status-badge-info {
-    @apply status-badge bg-info/15 text-info-foreground;
+    @apply status-badge bg-sky-500/10 text-sky-600 border-sky-500/20 dark:bg-sky-500/20 dark:text-sky-400 dark:border-sky-500/30;
+  }
+}
+
+@layer utilities {
+  .glass-panel {
+    @apply bg-white/70 dark:bg-black/40 border border-white/20 dark:border-white/5 backdrop-blur-md shadow-lg;
+  }
+  
+  .glass-card {
+    @apply bg-white/85 dark:bg-card/75 border border-white/30 dark:border-white/10 backdrop-blur-lg shadow-xl;
+  }
+
+  .bg-gradient-primary-to-secondary {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--secondary)) 100%);
+  }
+
+  .text-gradient {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--secondary)) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
   }
 }

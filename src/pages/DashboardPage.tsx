@@ -12,6 +12,7 @@ import {
   Users,
   Box,
   Bell,
+  Activity,
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import Breadcrumb from "@/components/Breadcrumb";
@@ -20,7 +21,202 @@ import type { MaterialCatalogRow } from "@/lib/materialMappers";
 import { mapApiRawMaterialToRow } from "@/lib/materialMappers";
 import type { UserRole } from "@/lib/roleConfig";
 
-const COLORS = ["hsl(var(--primary))", "hsl(var(--secondary))", "hsl(var(--destructive))", "hsl(var(--info))"];
+// Live Production Summary Widget
+function LiveProductionSummaryWidget() {
+  const [summary, setSummary] = useState<Record<string, number> | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchSummary = async () => {
+    try {
+      const { data } = await dashboardApi.getProductionSummary();
+      setSummary(data);
+    } catch (err) {
+      console.error("Live Production Summary failed", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSummary();
+    const interval = setInterval(fetchSummary, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="bg-card border border-primary/20 bg-gradient-to-br from-card to-primary/5 rounded-xl p-5 shadow-sm space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Activity className="w-4 h-4 text-primary animate-pulse" />
+          <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">Live Production Summary</h3>
+        </div>
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+        </span>
+      </div>
+      {loading ? (
+        <p className="text-xs text-muted-foreground animate-pulse">Loading live updates...</p>
+      ) : (
+        <div className="grid grid-cols-3 gap-2">
+          <div className="p-2 bg-background/50 border rounded-lg text-center">
+            <span className="text-[10px] text-muted-foreground uppercase font-semibold">Initiated Today</span>
+            <p className="text-lg font-extrabold text-foreground mt-0.5">{summary?.batchesInitiatedToday ?? 0}</p>
+          </div>
+          <div className="p-2 bg-background/50 border rounded-lg text-center">
+            <span className="text-[10px] text-muted-foreground uppercase font-semibold">In Progress</span>
+            <p className="text-lg font-extrabold text-foreground mt-0.5">{summary?.batchesInProgress ?? 0}</p>
+          </div>
+          <div className="p-2 bg-background/50 border rounded-lg text-center">
+            <span className="text-[10px] text-muted-foreground uppercase font-semibold">Pending QC</span>
+            <p className="text-lg font-extrabold text-foreground mt-0.5">{summary?.pendingQcCount ?? 0}</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Live Inventory Summary Widget
+function LiveInventorySummaryWidget() {
+  const [summary, setSummary] = useState<Record<string, number> | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchSummary = async () => {
+    try {
+      const { data } = await dashboardApi.getInventorySummary();
+      setSummary(data);
+    } catch (err) {
+      console.error("Live Inventory Summary failed", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSummary();
+    const interval = setInterval(fetchSummary, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="bg-card border border-primary/20 bg-gradient-to-br from-card to-primary/5 rounded-xl p-5 shadow-sm space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Activity className="w-4 h-4 text-primary animate-pulse" />
+          <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">Live Inventory Summary</h3>
+        </div>
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+        </span>
+      </div>
+      {loading ? (
+        <p className="text-xs text-muted-foreground animate-pulse">Loading live updates...</p>
+      ) : (
+        <div className="grid grid-cols-3 gap-2">
+          <div className="p-2 bg-background/50 border rounded-lg text-center">
+            <span className="text-[10px] text-muted-foreground uppercase font-semibold">Low Stock Items</span>
+            <p className="text-lg font-extrabold text-foreground mt-0.5">{summary?.lowStockItemCount ?? 0}</p>
+          </div>
+          <div className="p-2 bg-background/50 border rounded-lg text-center">
+            <span className="text-[10px] text-muted-foreground uppercase font-semibold">Near Expiry</span>
+            <p className="text-lg font-extrabold text-foreground mt-0.5">{summary?.nearExpiryItemCount ?? 0}</p>
+          </div>
+          <div className="p-2 bg-background/50 border rounded-lg text-center">
+            <span className="text-[10px] text-muted-foreground uppercase font-semibold">Total Goods (Qty)</span>
+            <p className="text-lg font-extrabold text-foreground mt-0.5">{(summary?.totalFinishedGoodsUnits ?? 0).toLocaleString()}</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Live Sales Summary Widget
+function LiveSalesSummaryWidget() {
+  const [summary, setSummary] = useState<Record<string, number> | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchSummary = async () => {
+    try {
+      const { data } = await dashboardApi.getSalesSummary();
+      setSummary(data);
+    } catch (err) {
+      console.error("Live Sales Summary failed", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSummary();
+    const interval = setInterval(fetchSummary, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="bg-card border border-primary/20 bg-gradient-to-br from-card to-primary/5 rounded-xl p-5 shadow-sm space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Activity className="w-4 h-4 text-primary animate-pulse" />
+          <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">Live Sales Summary</h3>
+        </div>
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+        </span>
+      </div>
+      {loading ? (
+        <p className="text-xs text-muted-foreground animate-pulse">Loading live updates...</p>
+      ) : (
+        <div className="grid grid-cols-3 gap-2">
+          <div className="p-2 bg-background/50 border rounded-lg text-center">
+            <span className="text-[10px] text-muted-foreground uppercase font-semibold">Confirmed Today</span>
+            <p className="text-lg font-extrabold text-foreground mt-0.5">{summary?.ordersConfirmedToday ?? 0}</p>
+          </div>
+          <div className="p-2 bg-background/50 border rounded-lg text-center">
+            <span className="text-[10px] text-muted-foreground uppercase font-semibold">Pending Fulfillment</span>
+            <p className="text-lg font-extrabold text-foreground mt-0.5">{summary?.ordersPendingFulfillment ?? 0}</p>
+          </div>
+          <div className="p-2 bg-background/50 border rounded-lg text-center">
+            <span className="text-[10px] text-muted-foreground uppercase font-semibold">Sold This Week</span>
+            <p className="text-lg font-extrabold text-foreground mt-0.5">{(summary?.totalUnitsSoldThisWeek ?? 0).toLocaleString()}</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function getIconStyles(colorClass: string) {
+  if (colorClass.includes("primary") || colorClass.includes("success")) {
+    return {
+      bg: "bg-emerald-500/10 dark:bg-emerald-500/20 border-emerald-500/20 dark:border-emerald-500/30",
+      text: "text-emerald-600 dark:text-emerald-400",
+      cardGlow: "shadow-emerald-500/[0.03] hover:shadow-emerald-500/10"
+    };
+  }
+  if (colorClass.includes("secondary") || colorClass.includes("warning")) {
+    return {
+      bg: "bg-orange-500/10 dark:bg-orange-500/20 border-orange-500/20 dark:border-orange-500/30",
+      text: "text-orange-600 dark:text-orange-400",
+      cardGlow: "shadow-orange-500/[0.03] hover:shadow-orange-500/10"
+    };
+  }
+  if (colorClass.includes("destructive") || colorClass.includes("danger")) {
+    return {
+      bg: "bg-rose-500/10 dark:bg-rose-500/20 border-rose-500/20 dark:border-rose-500/30",
+      text: "text-rose-600 dark:text-rose-400",
+      cardGlow: "shadow-rose-500/[0.03] hover:shadow-rose-500/10"
+    };
+  }
+  return {
+    bg: "bg-sky-500/10 dark:bg-sky-500/20 border-sky-500/20 dark:border-sky-500/30",
+    text: "text-sky-600 dark:text-sky-400",
+    cardGlow: "shadow-sky-500/[0.03] hover:shadow-sky-500/10"
+  };
+}
 
 function StatCard({
   label,
@@ -35,14 +231,17 @@ function StatCard({
   icon: React.ElementType;
   color: string;
 }) {
+  const styles = getIconStyles(color);
   return (
-    <div className="stat-card">
+    <div className={`stat-card shadow-sm ${styles.cardGlow} hover:border-primary/20 transition-all duration-300`}>
       <div className="flex items-center justify-between mb-3">
-        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</span>
-        <Icon className={`w-5 h-5 ${color}`} />
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{label}</span>
+        <div className={`p-2 rounded-xl border ${styles.bg}`}>
+          <Icon className={`w-5 h-5 ${styles.text}`} />
+        </div>
       </div>
-      <p className="text-2xl font-heading font-bold">{value}</p>
-      <p className="text-xs text-muted-foreground mt-1">{sub}</p>
+      <p className="text-3xl font-heading font-extrabold text-foreground tracking-tight">{value}</p>
+      <p className="text-xs text-muted-foreground mt-1.5 font-medium">{sub}</p>
     </div>
   );
 }
@@ -97,6 +296,7 @@ function ProductionManagerDashboard({ data, materials }: { data: DashboardPayloa
 
   return (
     <div className="space-y-6">
+      <LiveProductionSummaryWidget />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Total batches"
@@ -122,25 +322,32 @@ function ProductionManagerDashboard({ data, materials }: { data: DashboardPayloa
         <StatCard label="Material alerts" value={lowMat.length} sub="Below minimum" icon={AlertTriangle} color="text-destructive" />
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-card border rounded-lg p-5">
-          <h3 className="font-heading font-semibold mb-4">Batches by status</h3>
+        <div className="lg:col-span-2 bg-card border rounded-xl p-5 shadow-sm">
+          <h3 className="font-heading font-semibold mb-4 text-foreground/80">Batches by status</h3>
           {batchChart.length === 0 ? (
             <p className="text-sm text-muted-foreground">No batch status data.</p>
           ) : (
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={batchChart}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <defs>
+                  <linearGradient id="primaryBarGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.95} />
+                    <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.35} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
                 <YAxis tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: "hsl(var(--card))",
                     border: "1px solid hsl(var(--border))",
-                    borderRadius: 8,
+                    borderRadius: 12,
                     fontSize: 12,
+                    boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.05)"
                   }}
                 />
-                <Bar dataKey="value" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="value" fill="url(#primaryBarGrad)" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -158,6 +365,7 @@ function InventoryManagerDashboard({ data, materials }: { data: DashboardPayload
 
   return (
     <div className="space-y-6">
+      <LiveInventorySummaryWidget />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Total raw materials"
@@ -243,19 +451,26 @@ function QCOfficerDashboard({ data }: { data: DashboardPayload }) {
         <div className="lg:col-span-2">
           <RecentActivityPanel items={recentActivity} />
         </div>
-        <div className="bg-card border rounded-lg p-5">
-          <h3 className="font-heading font-semibold mb-4">Quality overview</h3>
+        <div className="bg-card border rounded-xl p-5 shadow-sm">
+          <h3 className="font-heading font-semibold mb-4 text-foreground/80">Quality overview</h3>
           <ResponsiveContainer width="100%" height={220}>
             <PieChart>
               <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label>
                 {pieData.map((_, i) => (
-                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                  <Cell key={i} fill={i === 0 ? "hsl(var(--primary))" : "hsl(var(--muted))"} />
                 ))}
               </Pie>
-              <Tooltip />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "hsl(var(--card))",
+                  border: "1px solid hsl(var(--border))",
+                  borderRadius: 12,
+                  fontSize: 12,
+                }}
+              />
             </PieChart>
           </ResponsiveContainer>
-          <p className="text-xs text-muted-foreground mt-2 text-center">Detailed QC rows will appear when the quality list API returns data.</p>
+          <p className="text-xs text-muted-foreground mt-2 text-center font-medium">Detailed QC rows will appear when the quality list API returns data.</p>
         </div>
       </div>
     </div>
@@ -268,31 +483,39 @@ function SalesStaffDashboard({ data }: { data: DashboardPayload }) {
 
   return (
     <div className="space-y-6">
+      <LiveSalesSummaryWidget />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Sales orders" value={kpis.totalSales} sub="Total in system" icon={ShoppingCart} color="text-primary" />
         <StatCard label="Production" value={kpis.totalProduction} sub="Batches tracked" icon={Factory} color="text-secondary" />
         <StatCard label="Inventory value" value={`RWF ${Number(kpis.inventoryValue ?? 0).toLocaleString()}`} sub="Raw materials" icon={TrendingUp} color="text-primary" />
         <StatCard label="QC pass rate" value={`${Math.round(kpis.qualityPassRate ?? 0)}%`} sub="Quality" icon={CheckCircle} color="text-primary" />
       </div>
-      <div className="bg-card border rounded-lg p-5">
-        <h3 className="font-heading font-semibold mb-4">Orders by status</h3>
+      <div className="bg-card border rounded-xl p-5 shadow-sm">
+        <h3 className="font-heading font-semibold mb-4 text-foreground/80">Orders by status</h3>
         {orderBars.length === 0 ? (
           <p className="text-sm text-muted-foreground">No order data yet.</p>
         ) : (
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={orderBars}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <defs>
+                <linearGradient id="primaryBarGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.95} />
+                  <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.35} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
               <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
               <YAxis tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
               <Tooltip
                 contentStyle={{
                   backgroundColor: "hsl(var(--card))",
                   border: "1px solid hsl(var(--border))",
-                  borderRadius: 8,
+                  borderRadius: 12,
                   fontSize: 12,
+                  boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.05)"
                 }}
               />
-              <Bar dataKey="value" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="value" fill="url(#primaryBarGrad)" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         )}
@@ -317,6 +540,11 @@ function AdminDashboard({
 
   return (
     <div className="space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <LiveProductionSummaryWidget />
+        <LiveInventorySummaryWidget />
+        <LiveSalesSummaryWidget />
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Production batches" value={kpis.totalProduction} sub="Total tracked" icon={Factory} color="text-primary" />
         <StatCard label="Users (loaded)" value={adminUsers.length} sub="From user API" icon={Users} color="text-primary" />
@@ -324,25 +552,32 @@ function AdminDashboard({
         <StatCard label="Unread notifications" value={unreadNotifications} sub="API counter" icon={Bell} color="text-secondary" />
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-card border rounded-lg p-5">
-          <h3 className="font-heading font-semibold mb-4">Batches by status</h3>
+        <div className="lg:col-span-2 bg-card border rounded-xl p-5 shadow-sm">
+          <h3 className="font-heading font-semibold mb-4 text-foreground/80">Batches by status</h3>
           {batchChart.length === 0 ? (
             <p className="text-sm text-muted-foreground">No data.</p>
           ) : (
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={batchChart}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <defs>
+                  <linearGradient id="primaryBarGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.95} />
+                    <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.35} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
                 <YAxis tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: "hsl(var(--card))",
                     border: "1px solid hsl(var(--border))",
-                    borderRadius: 8,
+                    borderRadius: 12,
                     fontSize: 12,
+                    boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.05)"
                   }}
                 />
-                <Bar dataKey="value" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="value" fill="url(#primaryBarGrad)" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}
