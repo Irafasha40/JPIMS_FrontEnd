@@ -12,7 +12,7 @@ const COLORS = ["hsl(142, 72%, 29%)", "hsl(32, 95%, 44%)", "hsl(354, 70%, 54%)",
 export default function ReportsPage() {
   const { role } = useRole();
   const [activeReport, setActiveReport] = useState("");
-  
+
   // Lists for secondary filters
   const [recipes, setRecipes] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
@@ -41,6 +41,7 @@ export default function ReportsPage() {
     { value: "inventory", label: "Inventory", roles: ["administrator", "production_manager", "inventory_manager"] },
     { value: "sales", label: "Sales & Fulfillment", roles: ["administrator", "production_manager", "sales_staff"] },
     { value: "wastage", label: "Wastage", roles: ["administrator", "production_manager", "inventory_manager"] },
+    { value: "stock-movements", label: "Stock Movements", roles: ["administrator", "production_manager", "inventory_manager"] },
   ];
 
   const allowedReports = reportsConfig.filter((rep) => rep.roles.includes(role || "administrator"));
@@ -54,9 +55,9 @@ export default function ReportsPage() {
 
   // Fetch secondary filter metadata on mount
   useEffect(() => {
-    recipesApi.getAll().then((res: any) => setRecipes(res.data.content ?? res.data ?? [])).catch(() => {});
-    finishedProductsApi.listPage({ size: 200 }).then((res) => setProducts(res.data.content ?? [])).catch(() => {});
-    customersApi.listPage({ size: 200 }).then((res) => setCustomers(res.data.content ?? [])).catch(() => {});
+    recipesApi.getAll().then((res: any) => setRecipes(res.data.content ?? res.data ?? [])).catch(() => { });
+    finishedProductsApi.listPage({ size: 200 }).then((res) => setProducts(res.data.content ?? [])).catch(() => { });
+    customersApi.listPage({ size: 200 }).then((res) => setCustomers(res.data.content ?? [])).catch(() => { });
   }, []);
 
   // Fetch report data
@@ -86,6 +87,8 @@ export default function ReportsPage() {
         res = await reportsApi.sales(params);
       } else if (activeReport === "wastage") {
         res = await reportsApi.wastage(params);
+      } else if (activeReport === "stock-movements") {
+        res = await reportsApi.stockMovements(params);
       }
 
       if (res) {
@@ -127,6 +130,8 @@ export default function ReportsPage() {
         if (customer !== "all") params.customer = customer;
       } else if (activeReport === "wastage") {
         url = "/reports/wastage";
+      } else if (activeReport === "stock-movements") {
+        url = "/reports/stock-movements";
       }
 
       const response = await apiClient.get(url, { params, responseType: "blob" });
@@ -229,6 +234,27 @@ export default function ReportsPage() {
       );
     }
 
+    if (activeReport === "stock-movements") {
+      const stockInCount = reportData.data.filter((d: any) => d.movementType === "STOCK_IN" || d.movementType === "PRODUCTION_IN").length;
+      const stockOutCount = reportData.data.filter((d: any) => d.movementType === "STOCK_OUT" || d.movementType === "SALES_OUT").length;
+      const pieData = [
+        { name: "Stock In", value: stockInCount },
+        { name: "Stock Out", value: stockOutCount },
+      ];
+      return (
+        <ResponsiveContainer width="100%" height={300}>
+          <PieChart>
+            <Pie data={pieData} cx="50%" cy="50%" outerRadius={80} label dataKey="value">
+              {pieData.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={index === 0 ? "hsl(142, 72%, 29%)" : "hsl(354, 70%, 54%)"} />
+              ))}
+            </Pie>
+            <Tooltip />
+          </PieChart>
+        </ResponsiveContainer>
+      );
+    }
+
     if (activeReport === "wastage") {
       const chartData = reportData.data.slice(0, 10).map((d: any) => ({
         name: d.name || "Unknown",
@@ -309,8 +335,8 @@ export default function ReportsPage() {
               {val === null || val === undefined
                 ? "—"
                 : typeof val === "number" && key.toLowerCase().includes("cost") || key.toLowerCase().includes("amount") || key.toLowerCase().includes("value") || key.toLowerCase().includes("estimate")
-                ? `RWF ${val.toLocaleString()}`
-                : val.toString()}
+                  ? `RWF ${val.toLocaleString()}`
+                  : val.toString()}
             </td>
           );
         })}
@@ -323,7 +349,7 @@ export default function ReportsPage() {
   return (
     <div className="space-y-6">
       <Breadcrumb />
-      
+
       {/* Header */}
       <div className="module-header flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -346,11 +372,10 @@ export default function ReportsPage() {
           <button
             key={rep.value}
             onClick={() => setActiveReport(rep.value)}
-            className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-all duration-200 whitespace-nowrap ${
-              activeReport === rep.value
+            className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-all duration-200 whitespace-nowrap ${activeReport === rep.value
                 ? "border-primary text-primary font-bold bg-primary/5 rounded-t-lg"
                 : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted"
-            }`}
+              }`}
           >
             {rep.label}
           </button>

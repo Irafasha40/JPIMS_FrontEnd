@@ -87,12 +87,16 @@ export const finishedProductsApi = {
   ...withListPage("/finished-products"),
   transfer: (body: { batchId: string; lotNumber?: string }) =>
     apiClient.post<Record<string, unknown>>("/finished-products/transfer", body),
+  updateStatus: (id: string, status: string) =>
+    apiClient.put<Record<string, unknown>>(`/finished-products/${id}/status`, { status }),
 };
 const notificationsBase = "/notifications";
 export const notificationsApi = {
   ...withListPage(notificationsBase),
   unreadCount: () => apiClient.get<{ count: number }>(`${notificationsBase}/unread-count`),
+  markRead: (id: string) => apiClient.put(`${notificationsBase}/${id}/read`),
   markAllRead: () => apiClient.put(`${notificationsBase}/read-all`),
+  broadcast: (body: { title: string; message: string; recipient: string }) => apiClient.post(`${notificationsBase}/broadcast`, body),
 };
 const auditBase = "/audit";
 export const auditApi = {
@@ -116,6 +120,8 @@ export const reportsApi = {
     apiClient.get<Record<string, unknown>>("/reports/sales", { params }),
   wastage: (params?: Record<string, unknown>) =>
     apiClient.get<Record<string, unknown>>("/reports/wastage", { params }),
+  stockMovements: (params?: Record<string, unknown>) =>
+    apiClient.get<Record<string, unknown>>("/reports/stock-movements", { params }),
   scheduledList: (params?: Record<string, unknown>) =>
     apiClient.get<SpringPage<Record<string, unknown>>>("/reports/scheduled", { params }),
 };

@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import Breadcrumb from "@/components/Breadcrumb";
-import { usersApi } from "@/lib/api";
+import { usersApi, apiClient } from "@/lib/api";
 import { roleLabels, type UserRole } from "@/lib/roleConfig";
 import { backendRoleToUserRole, userRoleToBackendEnum } from "@/lib/roleUtils";
 
@@ -28,6 +28,7 @@ const modules = [
   "Users",
   "Security",
 ];
+
 type UserRow = {
   id: string;
   name: string;
@@ -70,9 +71,28 @@ export default function UserManagementPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+
+  // Add user
   const [addOpen, setAddOpen] = useState(false);
   const [addSubmitting, setAddSubmitting] = useState(false);
   const [addForm, setAddForm] = useState(emptyAddForm);
+
+  // Edit user
+  const [editOpen, setEditOpen] = useState(false);
+  const [editUser, setEditUser] = useState<UserRow | null>(null);
+  const [editForm, setEditForm] = useState({ fullName: "", department: "", roleKey: "production_manager" as UserRole });
+  const [editSubmitting, setEditSubmitting] = useState(false);
+
+  // Reset password
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetUser, setResetUser] = useState<UserRow | null>(null);
+  const [resetSubmitting, setResetSubmitting] = useState(false);
+  const [tempPassword, setTempPassword] = useState<string | null>(null);
+
+  // Deactivate
+  const [deactivateOpen, setDeactivateOpen] = useState(false);
+  const [deactivateUser, setDeactivateUser] = useState<UserRow | null>(null);
+  const [deactivateSubmitting, setDeactivateSubmitting] = useState(false);
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
@@ -104,25 +124,26 @@ export default function UserManagementPage() {
 
   const filtered = users.filter(
     (u) =>
-      u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase())
+      u.name.toLowerCase().includes(search.toLowerCase()) ||
+      u.email.toLowerCase().includes(search.toLowerCase())
   );
 
   const matrixRoles = Object.keys(roleLabels) as UserRole[];
 
+  // ── Add User ──────────────────────────────────────────────────────────────
   const handleCreateUser = async () => {
     const { fullName, employeeId, email, phone, department, roleKey, password } = addForm;
     if (!fullName.trim() || !employeeId.trim() || !email.trim() || !department || !password.trim()) {
       toast.error("Please fill in name, employee ID, email, department, and password.");
       return;
     }
-    const phoneVal = phone.trim() || "—";
     setAddSubmitting(true);
     try {
       await usersApi.create({
         fullName: fullName.trim(),
         employeeId: employeeId.trim(),
         email: email.trim(),
-        phone: phoneVal,
+        phone: phone.trim() || "—",
         department,
         role: userRoleToBackendEnum(roleKey),
         password: password.trim(),
@@ -142,6 +163,97 @@ export default function UserManagementPage() {
     }
   };
 
+  // ── Edit User ──────────────────────────────────────────────────────────────
+  const openEditDialog = (u: UserRow) => {
+    setEditUser(u);
+    setEditForm({
+      fullName: u.name,
+      department: u.department === "—" ? "" : u.department,
+      roleKey: u.roleKey,
+    });
+    setEditOpen(true);
+  };
+
+  const handleEditUser = async () => {
+    if (!editUser) return;
+    if (!editForm.fullName.trim()) {
+      toast.error("Full name is required.");
+      return;
+    }
+    setEditSubmitting(true);
+    try {
+      await usersApi.update(editUser.id, {
+        fullName: editForm.fullName.trim(),
+        department: editForm.department || undefined,
+        role: userRoleToBackendEnum(editForm.roleKey),
+      });
+      toast.success("User updated successfully.");
+      setEditOpen(false);
+      setEditUser(null);
+      await loadUsers();
+    } catch (e: unknown) {
+      const msg =
+        typeof e === "object" && e !== null && "response" in e
+          ? String((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? "")
+          : "";
+      toast.error(msg || "Could not update user.");
+    } finally {
+      setEditSubmitting(false);
+    }
+  };
+
+  // ── Reset Password ─────────────────────────────────────────────────────────
+  const openResetDialog = (u: UserRow) => {
+    setResetUser(u);
+    setTempPassword(null);
+    setResetOpen(true);
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetUser) return;
+    setResetSubmitting(true);
+    try {
+      const { data } = await apiClient.put<{ tempPassword: string }>(`/users/${resetUser.id}/reset-password`);
+      setTempPassword(data.tempPassword ?? null);
+      toast.success("Password reset successfully.");
+    } catch (e: unknown) {
+      const msg =
+        typeof e === "object" && e !== null && "response" in e
+          ? String((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? "")
+          : "";
+      toast.error(msg || "Could not reset password.");
+      setResetOpen(false);
+    } finally {
+      setResetSubmitting(false);
+    }
+  };
+
+  // ── Deactivate User ────────────────────────────────────────────────────────
+  const openDeactivateDialog = (u: UserRow) => {
+    setDeactivateUser(u);
+    setDeactivateOpen(true);
+  };
+
+  const handleDeactivate = async () => {
+    if (!deactivateUser) return;
+    setDeactivateSubmitting(true);
+    try {
+      await usersApi.delete(deactivateUser.id);
+      toast.success(`${deactivateUser.name} has been deactivated.`);
+      setDeactivateOpen(false);
+      setDeactivateUser(null);
+      await loadUsers();
+    } catch (e: unknown) {
+      const msg =
+        typeof e === "object" && e !== null && "response" in e
+          ? String((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? "")
+          : "";
+      toast.error(msg || "Could not deactivate user.");
+    } finally {
+      setDeactivateSubmitting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Breadcrumb />
@@ -150,6 +262,8 @@ export default function UserManagementPage() {
           <h1 className="text-2xl font-heading font-bold">User Management</h1>
           <p className="text-sm text-muted-foreground">Manage users, roles, and access permissions</p>
         </div>
+
+        {/* Add User Dialog */}
         <Dialog
           open={addOpen}
           onOpenChange={(open) => {
@@ -234,9 +348,7 @@ export default function UserManagementPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {matrixRoles.map((k) => (
-                        <SelectItem key={k} value={k}>
-                          {roleLabels[k]}
-                        </SelectItem>
+                        <SelectItem key={k} value={k}>{roleLabels[k]}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -254,9 +366,7 @@ export default function UserManagementPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setAddOpen(false)}>
-                Cancel
-              </Button>
+              <Button type="button" variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
               <Button type="button" disabled={addSubmitting} onClick={() => void handleCreateUser()}>
                 {addSubmitting ? "Creating…" : "Create User"}
               </Button>
@@ -266,7 +376,151 @@ export default function UserManagementPage() {
       </div>
 
       {loading && <p className="text-sm text-muted-foreground">Loading users…</p>}
-      {error && <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>}
+      {error && (
+        <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
+
+      {/* Edit Dialog */}
+      <Dialog
+        open={editOpen}
+        onOpenChange={(o) => {
+          setEditOpen(o);
+          if (!o) setEditUser(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit User — {editUser?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Full Name *</Label>
+              <Input
+                value={editForm.fullName}
+                onChange={(e) => setEditForm((f) => ({ ...f, fullName: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Department</Label>
+              <Select
+                value={editForm.department || undefined}
+                onValueChange={(v) => setEditForm((f) => ({ ...f, department: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select department" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Production">Production</SelectItem>
+                  <SelectItem value="Inventory">Inventory</SelectItem>
+                  <SelectItem value="Quality Control">Quality Control</SelectItem>
+                  <SelectItem value="Sales">Sales</SelectItem>
+                  <SelectItem value="Management">Management</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Role</Label>
+              <Select
+                value={editForm.roleKey}
+                onValueChange={(v) => setEditForm((f) => ({ ...f, roleKey: v as UserRole }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {matrixRoles.map((k) => (
+                    <SelectItem key={k} value={k}>{roleLabels[k]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+            <Button type="button" disabled={editSubmitting} onClick={() => void handleEditUser()}>
+              {editSubmitting ? "Saving…" : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Password Dialog */}
+      <Dialog
+        open={resetOpen}
+        onOpenChange={(o) => {
+          setResetOpen(o);
+          if (!o) {
+            setResetUser(null);
+            setTempPassword(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset Password — {resetUser?.name}</DialogTitle>
+          </DialogHeader>
+          {tempPassword ? (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                A temporary password has been generated. Share it securely with the user — they should change it immediately after logging in.
+              </p>
+              <div className="rounded-lg bg-muted px-4 py-3 font-mono text-sm font-semibold tracking-wider select-all break-all">
+                {tempPassword}
+              </div>
+              <DialogFooter>
+                <Button type="button" onClick={() => { setResetOpen(false); setTempPassword(null); }}>
+                  Done
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                This will generate a new temporary password for <strong>{resetUser?.name}</strong>.
+                The user will need to log in with it and can change it from their profile.
+              </p>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setResetOpen(false)}>Cancel</Button>
+                <Button type="button" disabled={resetSubmitting} onClick={() => void handleResetPassword()}>
+                  {resetSubmitting ? "Resetting…" : "Reset Password"}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Deactivate Dialog */}
+      <Dialog
+        open={deactivateOpen}
+        onOpenChange={(o) => {
+          setDeactivateOpen(o);
+          if (!o) setDeactivateUser(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Deactivate User</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Are you sure you want to deactivate <strong>{deactivateUser?.name}</strong>?
+            They will no longer be able to log in. This action can be reversed by an administrator.
+          </p>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setDeactivateOpen(false)}>Cancel</Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={deactivateSubmitting}
+              onClick={() => void handleDeactivate()}
+            >
+              {deactivateSubmitting ? "Deactivating…" : "Deactivate"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Tabs defaultValue="users">
         <TabsList>
@@ -303,15 +557,13 @@ export default function UserManagementPage() {
                 </tr>
               </thead>
               <tbody>
-                {!loading &&
-                  !error &&
-                  filtered.length === 0 && (
-                    <tr>
-                      <td colSpan={8} className="px-4 py-8 text-center text-sm text-muted-foreground">
-                        No users found.
-                      </td>
-                    </tr>
-                  )}
+                {!loading && !error && filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                      No users found.
+                    </td>
+                  </tr>
+                )}
                 {filtered.map((u) => (
                   <tr key={u.id} className="border-b last:border-0 hover:bg-muted/30">
                     <td className="px-4 py-3 font-medium">{u.name}</td>
@@ -319,7 +571,11 @@ export default function UserManagementPage() {
                     <td className="px-4 py-3">{roleLabels[u.roleKey]}</td>
                     <td className="px-4 py-3 text-muted-foreground">{u.department}</td>
                     <td className="px-4 py-3">
-                      {u.mfaEnabled ? <span className="status-badge-success">On</span> : <span className="text-muted-foreground text-xs">Off</span>}
+                      {u.mfaEnabled ? (
+                        <span className="status-badge-success">On</span>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">Off</span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <span className={u.status === "active" ? "status-badge-success" : "status-badge-info"}>
@@ -331,14 +587,30 @@ export default function UserManagementPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-1">
-                        <Button variant="ghost" size="sm" title="Edit">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          title="Edit"
+                          onClick={() => openEditDialog(u)}
+                        >
                           <Edit className="w-4 h-4" />
                         </Button>
-                        <Button variant="ghost" size="sm" title="Reset Password">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          title="Reset Password"
+                          onClick={() => openResetDialog(u)}
+                        >
                           <KeyRound className="w-4 h-4" />
                         </Button>
                         {u.status === "active" && (
-                          <Button variant="ghost" size="sm" title="Deactivate" className="text-destructive">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            title="Deactivate"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => openDeactivateDialog(u)}
+                          >
                             <UserX className="w-4 h-4" />
                           </Button>
                         )}

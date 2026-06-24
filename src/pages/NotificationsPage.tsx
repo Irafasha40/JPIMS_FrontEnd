@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, CheckCircle, Info, Send, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -9,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Breadcrumb from "@/components/Breadcrumb";
 import { notificationsApi } from "@/lib/api";
+import { useRole } from "@/contexts/RoleContext";
 
 const severityIcon: Record<string, React.ElementType> = {
   critical: AlertTriangle,
@@ -22,6 +24,13 @@ const severityCls: Record<string, string> = {
   success: "text-primary",
   info: "text-info",
 };
+
+function severityFor(type: unknown, fallback: string): string {
+  const value = String(type ?? fallback).toLowerCase();
+  if (value.includes("low_stock") || value.includes("near_expiry") || value.includes("qc")) return "warning";
+  if (value.includes("complete") || value.includes("order") || value.includes("new_order")) return "success";
+  return fallback;
+}
 
 type NotifRow = {
   id: string;
@@ -38,15 +47,21 @@ function mapNotif(n: Record<string, unknown>, index: number): NotifRow {
     title: String(n.title ?? n.subject ?? "Notification"),
     message: String(n.message ?? n.body ?? ""),
     date: String(n.createdAt ?? n.date ?? new Date().toISOString()),
-    severity: String(n.severity ?? "info").toLowerCase(),
+    severity: severityFor(n.type, String(n.severity ?? "info").toLowerCase()),
     read: Boolean(n.read ?? n.isRead ?? false),
   };
 }
 
 export default function NotificationsPage() {
+  const { role } = useRole();
+  const canBroadcast = role === "administrator";
   const [notifs, setNotifs] = useState<NotifRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [broadcastRecipient, setBroadcastRecipient] = useState("all");
+  const [broadcastTitle, setBroadcastTitle] = useState("");
+  const [broadcastMessage, setBroadcastMessage] = useState("");
+  const [broadcastSubmitting, setBroadcastSubmitting] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -63,6 +78,47 @@ export default function NotificationsPage() {
       setNotifs([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const markRead = async (id: string) => {
+    try {
+      await notificationsApi.markRead(id);
+      setNotifs((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+    } catch {
+      toast.error("Could not mark notification as read.");
+    }
+  };
+
+  const deleteNotification = async (id: string) => {
+    try {
+      await notificationsApi.delete(id);
+      setNotifs((prev) => prev.filter((n) => n.id !== id));
+    } catch {
+      toast.error("Could not delete notification.");
+    }
+  };
+
+  const handleBroadcast = async () => {
+    if (!broadcastTitle.trim() || !broadcastMessage.trim()) {
+      toast.error("Subject and message are required.");
+      return;
+    }
+    setBroadcastSubmitting(true);
+    try {
+      await notificationsApi.broadcast({ title: broadcastTitle.trim(), message: broadcastMessage.trim(), recipient: broadcastRecipient });
+      toast.success("Broadcast sent.");
+      setBroadcastTitle("");
+      setBroadcastMessage("");
+      await load();
+    } catch (e: unknown) {
+      const msg =
+        typeof e === "object" && e !== null && "response" in e
+          ? String((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? "")
+          : "";
+      toast.error(msg || "Could not send broadcast.");
+    } finally {
+      setBroadcastSubmitting(false);
     }
   };
 
@@ -95,7 +151,7 @@ export default function NotificationsPage() {
           </Button>
           <Dialog>
             <DialogTrigger asChild>
-              <Button size="sm">
+              <Button size="sm" disabled={!canBroadcast}>
                 <Send className="w-4 h-4 mr-1" />
                 Broadcast
               </Button>
@@ -107,33 +163,38 @@ export default function NotificationsPage() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Recipients</Label>
-                  <Select>
+                  <Select value={broadcastRecipient} onValueChange={setBroadcastRecipient}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select group" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Users</SelectItem>
-                      <SelectItem value="production">Production Staff</SelectItem>
-                      <SelectItem value="sales">Sales Staff</SelectItem>
-                      <SelectItem value="qc">QC Officers</SelectItem>
+                      <SelectItem value="production_manager">Production Staff</SelectItem>
+                      <SelectItem value="inventory_manager">Inventory Staff</SelectItem>
+                      <SelectItem value="sales_staff">Sales Staff</SelectItem>
+                      <SelectItem value="qc_officer">QC Officers</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Subject</Label>
-                  <Input placeholder="Message subject" />
+                  <Input placeholder="Message subject" value={broadcastTitle} onChange={(e) => setBroadcastTitle(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label>Message</Label>
                   <textarea
                     className="w-full rounded-md border bg-background px-3 py-2 text-sm min-h-[100px]"
                     placeholder="Write your message..."
+                    value={broadcastMessage}
+                    onChange={(e) => setBroadcastMessage(e.target.value)}
                   />
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline">Schedule</Button>
-                <Button>Send Now</Button>
+                <Button variant="outline" disabled={broadcastSubmitting}>Schedule</Button>
+                <Button disabled={broadcastSubmitting || !canBroadcast} onClick={() => void handleBroadcast()}>
+                  {broadcastSubmitting ? "Sending..." : "Send Now"}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -173,6 +234,10 @@ export default function NotificationsPage() {
                   <p className={`text-sm ${!n.read ? "font-semibold" : ""}`}>{n.title}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{n.message}</p>
                   <p className="text-xs text-muted-foreground mt-1">{new Date(n.date).toLocaleString()}</p>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  {!n.read && <Button variant="ghost" size="sm" onClick={() => void markRead(n.id)}>Mark read</Button>}
+                  <Button variant="ghost" size="sm" onClick={() => void deleteNotification(n.id)}>Delete</Button>
                 </div>
                 {!n.read && <span className="w-2 h-2 rounded-full bg-primary shrink-0 mt-2" />}
               </div>

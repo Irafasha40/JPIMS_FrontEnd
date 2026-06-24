@@ -149,6 +149,7 @@ export default function RawMaterialsPage() {
   const [stockInOpen, setStockInOpen] = useState(false);
   const [inMaterialId, setInMaterialId] = useState("");
   const [inQty, setInQty] = useState("");
+  const [inExpiry, setInExpiry] = useState("");
   const [inNotes, setInNotes] = useState("");
   const [inSubmitting, setInSubmitting] = useState(false);
 
@@ -437,11 +438,14 @@ export default function RawMaterialsPage() {
     }
     setInSubmitting(true);
     try {
-      await rawMaterialsApi.stockIn(inMaterialId, { quantity: q, notes: inNotes.trim() || "Manual stock-in" });
+      const body: Record<string, unknown> = { quantity: q, notes: inNotes.trim() || "Manual stock-in" };
+      if (inExpiry) body.expiryDate = inExpiry;
+      await rawMaterialsApi.stockIn(inMaterialId, body);
       toast.success("Stock-in recorded.");
       setStockInOpen(false);
       setInMaterialId("");
       setInQty("");
+      setInExpiry("");
       setInNotes("");
       await loadCatalog();
     } catch (e: unknown) {
@@ -648,58 +652,63 @@ export default function RawMaterialsPage() {
     <div className="space-y-6">
       <Breadcrumb />
       <div className="module-header">
-        <div>
-          <h1 className="text-2xl font-heading font-bold">Raw Materials</h1>
-          <p className="text-sm text-muted-foreground">Manage raw material inventory, stock movements, and purchase orders</p>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          <Dialog
-            open={stockInOpen}
-            onOpenChange={(o) => {
-              setStockInOpen(o);
-              if (!o) {
-                setInMaterialId("");
-                setInQty("");
-                setInNotes("");
-              }
-            }}
-          >
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm" disabled={!canMutateInventory}>
-                <ArrowDownCircle className="w-4 h-4 mr-1" />
-                Stock In
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Record Stock-In</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Material *</Label>
-                  <Select value={inMaterialId || undefined} onValueChange={setInMaterialId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select material" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {materials.map((m) => (
-                        <SelectItem key={m.id} value={m.id}>
-                          {m.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+<div>
+            <h1 className="text-2xl font-heading font-bold">Raw Materials</h1>
+            <p className="text-sm text-muted-foreground">Manage raw material inventory, stock movements, and purchase orders</p>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <Dialog
+              open={stockInOpen}
+              onOpenChange={(o) => {
+                setStockInOpen(o);
+                if (!o) {
+                  setInMaterialId("");
+                  setInQty("");
+                  setInExpiry("");
+                  setInNotes("");
+                }
+              }}
+            >
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" disabled={!canMutateInventory}>
+                  <ArrowDownCircle className="w-4 h-4 mr-1" />
+                  Stock In
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Record Stock-In</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Material *</Label>
+                    <Select value={inMaterialId || undefined} onValueChange={setInMaterialId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select material" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {materials.map((m) => (
+                          <SelectItem key={m.id} value={m.id}>
+                            {m.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Quantity *</Label>
+                    <Input type="number" min={0.0001} step="any" value={inQty} onChange={(e) => setInQty(e.target.value)} placeholder="0" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Notes</Label>
+                    <Input value={inNotes} onChange={(e) => setInNotes(e.target.value)} placeholder="Optional notes" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Expiry Date (optional)</Label>
+                    <Input type="date" value={inExpiry} onChange={(e) => setInExpiry(e.target.value)} />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Quantity *</Label>
-                  <Input type="number" min={0.0001} step="any" value={inQty} onChange={(e) => setInQty(e.target.value)} placeholder="0" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Notes</Label>
-                  <Input value={inNotes} onChange={(e) => setInNotes(e.target.value)} placeholder="Optional notes" />
-                </div>
-              </div>
-              <DialogFooter>
+                <DialogFooter>
                 <Button variant="outline" onClick={() => setStockInOpen(false)}>
                   Cancel
                 </Button>

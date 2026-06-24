@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Search, AlertTriangle, CheckCircle, XCircle, Eye, Download, ArrowRightCircle } from "lucide-react";
+import { Search, AlertTriangle, CheckCircle, XCircle, Eye, Download, ArrowRightCircle, Package, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "@/components/ui/use-toast";
 import Breadcrumb from "@/components/Breadcrumb";
 import { finishedProductsApi } from "@/lib/api";
 
@@ -32,6 +33,7 @@ function mapFP(p: Record<string, unknown>): FPRow {
   let status = "available";
   if (statusRaw.includes("near")) status = "near_expiry";
   if (statusRaw.includes("expir")) status = "expired";
+  if (statusRaw.includes("out_of_stock") || statusRaw.includes("out of stock")) status = "out_of_stock";
   return {
     id: String(p.id ?? ""),
     name: String(p.name ?? p.productName ?? "—"),
@@ -57,6 +59,22 @@ export default function FinishedProductsPage() {
   const [search, setSearch] = useState("");
   const [transferOpen, setTransferOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<FPRow | null>(null);
+  const [statusUpdating, setStatusUpdating] = useState<string | null>(null);
+
+  const handleMarkExpired = async (productId: string) => {
+    setStatusUpdating(productId);
+    try {
+      await finishedProductsApi.updateStatus(productId, "EXPIRED");
+      setFinishedProducts(prev => prev.map(p => 
+        p.id === productId ? { ...p, status: "expired" } : p
+      ));
+      toast({ title: "Product marked as expired" });
+    } catch (e) {
+      toast({ title: "Failed to update status", variant: "destructive" });
+    } finally {
+      setStatusUpdating(null);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -228,30 +246,47 @@ export default function FinishedProductsPage() {
                     </td>
                     <td className="px-4 py-3">{p.expiry}</td>
                     <td className="px-4 py-3 text-muted-foreground">{p.location}</td>
-                    <td className="px-4 py-3">
-                      {p.status === "available" && (
-                        <span className="status-badge-success">
-                          <CheckCircle className="w-3 h-3 mr-1" />
-                          Available
-                        </span>
-                      )}
-                      {p.status === "near_expiry" && (
-                        <span className="status-badge-warning">
-                          <AlertTriangle className="w-3 h-3 mr-1" />
-                          Near Expiry
-                        </span>
-                      )}
-                      {p.status === "expired" && (
-                        <span className="status-badge-danger">
-                          <XCircle className="w-3 h-3 mr-1" />
-                          Expired
-                        </span>
-                      )}
-                    </td>
+<td className="px-4 py-3">
+                       {p.status === "available" && (
+                         <span className="status-badge-success">
+                           <CheckCircle className="w-3 h-3 mr-1" />
+                           Available
+                         </span>
+                       )}
+                       {p.status === "near_expiry" && (
+                         <span className="status-badge-warning">
+                           <AlertTriangle className="w-3 h-3 mr-1" />
+                           Near Expiry
+                         </span>
+                       )}
+                       {p.status === "expired" && (
+                         <span className="status-badge-danger">
+                           <XCircle className="w-3 h-3 mr-1" />
+                           Expired
+                         </span>
+                       )}
+                       {p.status === "out_of_stock" && (
+                         <span className="status-badge-info">
+                           <Package className="w-3 h-3 mr-1" />
+                           Out of Stock
+                         </span>
+                       )}
+                     </td>
                     <td className="px-4 py-3">
                       <Button variant="ghost" size="sm" onClick={() => setSelectedProduct(p)}>
                         <Eye className="w-4 h-4" />
                       </Button>
+                      {p.status === "near_expiry" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleMarkExpired(p.id)}
+                          disabled={statusUpdating === p.id}
+                          title="Mark as expired"
+                        >
+                          <CalendarDays className="w-4 h-4" />
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -265,33 +300,46 @@ export default function FinishedProductsPage() {
           </div>
         </TabsContent>
 
-        <TabsContent value="expiry" className="mt-4">
-          <div className="bg-card border rounded-lg p-5">
-            <h3 className="font-heading font-semibold mb-4 text-secondary">Expiry Alerts</h3>
-            {nearExpiry.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">No products near expiry.</p>
-            ) : (
-              <div className="space-y-3">
-                {[...nearExpiry, ...finishedProducts.filter((p) => p.status === "expired")].map((p) => (
-                  <div key={p.id} className="flex items-center justify-between py-3 border-b last:border-0">
-                    <div>
-                      <p className="font-medium">{p.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {p.lotNumber} • {p.location}
-                      </p>
+<TabsContent value="expiry" className="mt-4">
+            <div className="bg-card border rounded-lg p-5">
+              <h3 className="font-heading font-semibold mb-4 text-secondary">Expiry Alerts</h3>
+              {nearExpiry.length === 0 && finishedProducts.filter((p) => p.status === "expired").length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">No products near expiry or expired.</p>
+              ) : (
+                <div className="space-y-3">
+                  {[...nearExpiry, ...finishedProducts.filter((p) => p.status === "expired")].map((p) => (
+                    <div key={p.id} className="flex items-center justify-between py-3 border-b last:border-0">
+                      <div>
+                        <p className="font-medium">{p.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {p.lotNumber} • {p.location}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="text-right">
+                          <p className="text-sm font-semibold">{p.expiry}</p>
+                          <span className={p.status === "expired" ? "status-badge-danger" : "status-badge-warning"}>
+                            {p.status === "expired" ? "Expired" : "Near Expiry"}
+                          </span>
+                        </div>
+                        {p.status === "near_expiry" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleMarkExpired(p.id)}
+                            disabled={statusUpdating === p.id}
+                            title="Mark as expired"
+                          >
+                            <CalendarDays className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold">{p.expiry}</p>
-                      <span className={p.status === "expired" ? "status-badge-danger" : "status-badge-warning"}>
-                        {p.status === "expired" ? "Expired" : "Near Expiry"}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </TabsContent>
+                  ))}
+                </div>
+              )}
+            </div>
+          </TabsContent>
 
         <TabsContent value="valuation" className="mt-4">
           <div className="bg-card border rounded-lg overflow-hidden">

@@ -358,23 +358,29 @@ export default function SecurityAuditPage() {
 
         <TabsContent value="anomalies" className="mt-4">
           <div className="space-y-3">
-            {(anomalyRows.length ? anomalyRows : failedLogins).map((la) => (
-              <div key={la.id} className="bg-card border border-l-4 border-l-destructive rounded-lg p-4 flex items-start gap-3">
-                <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-semibold">
-                    {loginStatusFromAction(la.action) === "blocked" ? "Account blocked" : "Security event"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    User: {la.user} • IP: {la.ip} • {la.module}
-                  </p>
-                  <p className="text-xs text-muted-foreground">{new Date(la.timestamp).toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{la.details}</p>
+            {(anomalyRows.length ? anomalyRows : failedLogins).map((la) => {
+              const isLoginAnomaly = isLoginRelated(la.action);
+              const label = isLoginAnomaly
+                ? loginStatusFromAction(la.action) === "blocked"
+                  ? "Account blocked"
+                  : "Failed login attempt"
+                : `Flagged: ${la.action.replace(/_/g, " ")} — ${la.module}`;
+              return (
+                <div key={la.id} className="bg-card border border-l-4 border-l-destructive rounded-lg p-4 flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold">{label}</p>
+                    <p className="text-xs text-muted-foreground">
+                      User: {la.user} • IP: {la.ip} • {la.module}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{new Date(la.timestamp).toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{la.details}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             {!anomalyRows.length && !failedLogins.length && (
-              <p className="text-sm text-muted-foreground">No anomalies returned from GET /api/audit/anomalies yet.</p>
+              <p className="text-sm text-muted-foreground">No anomalies detected. Flagged audit events will appear here.</p>
             )}
           </div>
         </TabsContent>
