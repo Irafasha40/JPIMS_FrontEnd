@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Breadcrumb from "@/components/Breadcrumb";
 import Pagination from "@/components/Pagination";
 import { customersApi, finishedProductsApi, ordersApi } from "@/lib/api";
+import { printInvoice } from "@/lib/printUtils";
 
 const statusMap: Record<string, { label: string; cls: string }> = {
   pending: { label: "Pending", cls: "status-badge-warning" },
@@ -781,7 +782,22 @@ export default function SalesPage() {
                   <p>Payment: {selectedOrder.paymentMethod}</p>
                   <p>Terms: Net 30 days</p>
                 </div>
-                <Button size="sm" className="w-full">
+                <Button
+                  size="sm"
+                  className="w-full"
+                  onClick={() =>
+                    void printInvoice({
+                      orderNumber: selectedOrder.orderNumber,
+                      date: selectedOrder.date,
+                      customer: selectedOrder.customer,
+                      paymentMethod: selectedOrder.paymentMethod,
+                      status: selectedOrder.status,
+                      products: selectedOrder.products,
+                      total: selectedOrder.total,
+                      notes: selectedOrder.notes || undefined,
+                    })
+                  }
+                >
                   <Printer className="w-4 h-4 mr-1" />
                   Print Invoice
                 </Button>
@@ -848,7 +864,26 @@ export default function SalesPage() {
                     )}
                     <Button variant="outline" size="sm" onClick={() => setInvoiceOpen(true)}>
                       <Printer className="w-4 h-4 mr-1" />
-                      Invoice
+                      View Invoice
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        void printInvoice({
+                          orderNumber: selectedOrder.orderNumber,
+                          date: selectedOrder.date,
+                          customer: selectedOrder.customer,
+                          paymentMethod: selectedOrder.paymentMethod,
+                          status: selectedOrder.status,
+                          products: selectedOrder.products,
+                          total: selectedOrder.total,
+                          notes: selectedOrder.notes || undefined,
+                        })
+                      }
+                    >
+                      <Printer className="w-4 h-4 mr-1" />
+                      Print Invoice
                     </Button>
                   </div>
                   {(selectedOrder.status === "pending" || selectedOrder.status === "confirmed") && (

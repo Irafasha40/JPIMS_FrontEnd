@@ -53,6 +53,7 @@ type BatchRow = {
   lossReason: string;
   recipeId: string;
   finishedGoodsTransferred: boolean;
+  stockApproved: boolean;
   ingredients: IngredientLine[];
 };
 
@@ -83,6 +84,7 @@ function mapBatch(m: Record<string, unknown>): BatchRow {
     lossReason: m.lossReason != null && String(m.lossReason) !== "" ? String(m.lossReason) : "—",
     recipeId: String(m.recipeId ?? "—"),
     finishedGoodsTransferred: Boolean(m.finishedGoodsTransferred),
+    stockApproved: Boolean(m.stockApproved),
     ingredients,
   };
 }
@@ -151,6 +153,7 @@ function StatusStepper({ currentStep }: { currentStep: number }) {
 export default function ProductionPage() {
   const { role } = useRole();
   const canMutateProduction = role === "administrator" || role === "production_manager";
+  const canApproveStock = role === "administrator" || role === "inventory_manager";
   const [batches, setBatches] = useState<BatchRow[]>([]);
   const [recipes, setRecipes] = useState<RecipeUi[]>([]);
   const [materials, setMaterials] = useState<MaterialCatalogRow[]>([]);
@@ -165,6 +168,7 @@ export default function ProductionPage() {
   const [targetQty, setTargetQty] = useState("");
   const [yieldOpen, setYieldOpen] = useState(false);
   const [confirmSubmitting, setConfirmSubmitting] = useState(false);
+  const [approveSubmitting, setApproveSubmitting] = useState(false);
   const [startSubmitting, setStartSubmitting] = useState(false);
   const [yieldSubmitting, setYieldSubmitting] = useState(false);
   const [sendQcSubmitting, setSendQcSubmitting] = useState(false);
@@ -232,6 +236,25 @@ export default function ProductionPage() {
       resetYieldForm(mapped);
     } catch {
       toast.error("Could not load batch details.");
+    }
+  };
+
+  const handleApproveStock = async () => {
+    if (!selectedBatch?.entityId || !canApproveStock) return;
+    setApproveSubmitting(true);
+    try {
+      const { data } = await batchesApi.approveStock(selectedBatch.entityId);
+      setSelectedBatch(mapBatch(data));
+      toast.success("Stock request approved successfully.");
+      await loadPageData();
+    } catch (e: unknown) {
+      const msg =
+        typeof e === "object" && e !== null && "response" in e
+          ? String((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? "")
+          : "";
+      toast.error(msg || "Could not approve stock.");
+    } finally {
+      setApproveSubmitting(false);
     }
   };
 
@@ -643,13 +666,44 @@ export default function ProductionPage() {
                     <p className="text-muted-foreground">Recipe</p>
                     <p className="font-medium">{selectedBatch.recipeId}</p>
                   </div>
+                  <div>
+                    <p className="text-muted-foreground">Stock Approved</p>
+                    <p className="font-medium">
+                      {selectedBatch.stockApproved ? (
+                        <span className="status-badge-success">Yes (Ready to Issue)</span>
+                      ) : (
+                        <span className="status-badge-danger">No (Awaiting Approval)</span>
+                      )}
+                    </p>
+                  </div>
                 </div>
                 <StatusStepper currentStep={(statusConfig[selectedBatch.status] ?? statusConfig.planned).step} />
                 <div className="mt-4 flex flex-wrap gap-2">
-                  {selectedBatch.status === "planned" && canMutateProduction && (
-                    <Button size="sm" disabled={confirmSubmitting} onClick={() => void handleConfirmIngredients()}>
-                      {confirmSubmitting ? "Confirming…" : "Confirm ingredients & issue stock"}
-                    </Button>
+                  {selectedBatch.status === "planned" && (
+                    <div className="flex flex-col gap-2 w-full">
+                      {!selectedBatch.stockApproved && canApproveStock && (
+                        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white w-fit" disabled={approveSubmitting} onClick={() => void handleApproveStock()}>
+                          {approveSubmitting ? "Approving…" : "Approve & Accept Stock Issuance"}
+                        </Button>
+                      )}
+                      {canMutateProduction && (
+                        <div className="flex flex-col gap-1">
+                          <Button
+                            size="sm"
+                            disabled={confirmSubmitting || !selectedBatch.stockApproved}
+                            onClick={() => void handleConfirmIngredients()}
+                            className="w-fit"
+                          >
+                            {confirmSubmitting ? "Confirming…" : "Confirm ingredients & issue stock"}
+                          </Button>
+                          {!selectedBatch.stockApproved && (
+                            <p className="text-xs text-amber-600 dark:text-amber-400">
+                              ⚠️ Waiting for an Inventory Manager to approve/accept stock issuance.
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   )}
                   {selectedBatch.status === "issued" && canMutateProduction && (
                     <Button size="sm" disabled={startSubmitting} onClick={() => void handleStartProduction()}>

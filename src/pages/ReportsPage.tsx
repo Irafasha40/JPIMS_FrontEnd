@@ -37,11 +37,11 @@ export default function ReportsPage() {
   // Determine allowed report tabs for the user's role
   const reportsConfig = [
     { value: "production", label: "Production", roles: ["administrator", "production_manager"] },
-    { value: "quality", label: "Quality Performance", roles: ["administrator", "production_manager", "qc_officer"] },
-    { value: "inventory", label: "Inventory", roles: ["administrator", "production_manager", "inventory_manager"] },
-    { value: "sales", label: "Sales & Fulfillment", roles: ["administrator", "production_manager", "sales_staff"] },
+    { value: "quality", label: "Quality Performance", roles: ["administrator", "qc_officer"] },
+    { value: "inventory", label: "Inventory", roles: ["administrator", "inventory_manager"] },
+    { value: "sales", label: "Sales & Fulfillment", roles: ["administrator", "sales_staff"] },
     { value: "wastage", label: "Wastage", roles: ["administrator", "production_manager", "inventory_manager"] },
-    { value: "stock-movements", label: "Stock Movements", roles: ["administrator", "production_manager", "inventory_manager"] },
+    { value: "stock-movements", label: "Stock Movements", roles: ["administrator", "inventory_manager"] },
   ];
 
   const allowedReports = reportsConfig.filter((rep) => rep.roles.includes(role || "administrator"));

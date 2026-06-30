@@ -102,9 +102,38 @@ export default function FinishedProductsPage() {
     };
   }, []);
 
-  const filtered = finishedProducts.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()));
-  const totalValue = finishedProducts.reduce((a, p) => a + p.stock * p.unitCost, 0);
-  const nearExpiry = finishedProducts.filter((p) => p.status === "near_expiry");
+  const activeFP = finishedProducts.filter((p) => p.stock > 0);
+
+  // Group by name + flavor + size
+  const grouped: Record<string, FPRow[]> = {};
+  activeFP.forEach((p) => {
+    const key = `${p.name}|${p.flavor}|${p.size}`;
+    if (!grouped[key]) {
+      grouped[key] = [];
+    }
+    grouped[key].push(p);
+  });
+
+  const groupedList = Object.entries(grouped).map(([key, items]) => {
+    const [name, flavor, size] = key.split("|");
+    return {
+      key,
+      name,
+      flavor,
+      size,
+      items,
+      totalStock: items.reduce((sum, item) => sum + item.stock, 0),
+      totalValue: items.reduce((sum, item) => sum + item.stock * item.unitCost, 0),
+      unitCost: items[0]?.unitCost ?? 0,
+    };
+  });
+
+  const filteredGrouped = groupedList.filter((g) =>
+    g.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const totalValue = activeFP.reduce((a, p) => a + p.stock * p.unitCost, 0);
+  const nearExpiry = activeFP.filter((p) => p.status === "near_expiry");
 
   return (
     <div className="space-y-6">
@@ -221,78 +250,113 @@ export default function FinishedProductsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((p) => (
-                  <tr
-                    key={p.id}
-                    className={`border-b last:border-0 hover:bg-muted/30 ${
-                      p.status === "expired" ? "bg-destructive/5" : p.status === "near_expiry" ? "bg-secondary/5" : ""
-                    }`}
-                  >
-                    <td className="px-4 py-3">
-                      <p className="font-medium">{p.name}</p>
-                      <p className="text-xs text-muted-foreground">{p.flavor}</p>
+                {filteredGrouped.map((g) => (
+                  <tr key={g.key} className="border-b last:border-0 hover:bg-muted/30">
+                    <td className="px-4 py-3 align-top">
+                      <p className="font-medium">{g.name}</p>
+                      <p className="text-xs text-muted-foreground">{g.flavor}</p>
                     </td>
-                    <td className="px-4 py-3">{p.size}</td>
-                    <td className="px-4 py-3">
-                      <p className="font-mono text-xs">{p.batch}</p>
-                      <p className="text-xs text-muted-foreground">{p.lotNumber}</p>
+                    <td className="px-4 py-3 align-top">{g.size}</td>
+                    <td className="px-4 py-3 align-top">
+                      <div className="space-y-2">
+                        {g.items.map((item) => (
+                          <div key={item.id}>
+                            <p className="font-mono text-xs">{item.batch || "—"}</p>
+                            <p className="text-[10px] text-muted-foreground">{item.lotNumber || "—"}</p>
+                          </div>
+                        ))}
+                      </div>
                     </td>
-                    <td className="px-4 py-3 font-semibold">{p.stock.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">
-                      {p.volumeLiters != null && <p>{p.volumeLiters.toLocaleString()} L produced</p>}
-                      {p.bottlesUsed != null && <p>{p.bottlesUsed.toLocaleString()} bottles</p>}
-                      {p.boxesUsed != null && <p>{p.boxesUsed.toLocaleString()} boxes</p>}
-                      {p.bottlesUsed == null && p.boxesUsed == null && "—"}
+                    <td className="px-4 py-3 align-top font-semibold">
+                      <div className="space-y-2">
+                        {g.items.map((item) => (
+                          <div key={item.id} className="py-0.5">
+                            {item.stock.toLocaleString()}
+                          </div>
+                        ))}
+                      </div>
                     </td>
-                    <td className="px-4 py-3">{p.expiry}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{p.location}</td>
-<td className="px-4 py-3">
-                       {p.status === "available" && (
-                         <span className="status-badge-success">
-                           <CheckCircle className="w-3 h-3 mr-1" />
-                           Available
-                         </span>
-                       )}
-                       {p.status === "near_expiry" && (
-                         <span className="status-badge-warning">
-                           <AlertTriangle className="w-3 h-3 mr-1" />
-                           Near Expiry
-                         </span>
-                       )}
-                       {p.status === "expired" && (
-                         <span className="status-badge-danger">
-                           <XCircle className="w-3 h-3 mr-1" />
-                           Expired
-                         </span>
-                       )}
-                       {p.status === "out_of_stock" && (
-                         <span className="status-badge-info">
-                           <Package className="w-3 h-3 mr-1" />
-                           Out of Stock
-                         </span>
-                       )}
-                     </td>
-                    <td className="px-4 py-3">
-                      <Button variant="ghost" size="sm" onClick={() => setSelectedProduct(p)}>
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                      {p.status === "near_expiry" && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleMarkExpired(p.id)}
-                          disabled={statusUpdating === p.id}
-                          title="Mark as expired"
-                        >
-                          <CalendarDays className="w-4 h-4" />
-                        </Button>
-                      )}
+                    <td className="px-4 py-3 align-top text-xs text-muted-foreground">
+                      <div className="space-y-2">
+                        {g.items.map((item) => (
+                          <div key={item.id} className="py-0.5">
+                            {item.volumeLiters != null && <span>{item.volumeLiters.toLocaleString()} L</span>}
+                            {item.bottlesUsed != null && <span> • {item.bottlesUsed.toLocaleString()} btl</span>}
+                            {item.boxesUsed != null && <span> • {item.boxesUsed.toLocaleString()} box</span>}
+                            {item.volumeLiters == null && item.bottlesUsed == null && item.boxesUsed == null && "—"}
+                          </div>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 align-top">
+                      <div className="space-y-2">
+                        {g.items.map((item) => (
+                          <div key={item.id} className="text-xs py-1">
+                            {item.expiry}
+                          </div>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 align-top text-muted-foreground">
+                      <div className="space-y-2">
+                        {g.items.map((item) => (
+                          <div key={item.id} className="text-xs py-1">
+                            {item.location}
+                          </div>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 align-top">
+                      <div className="space-y-2">
+                        {g.items.map((item) => (
+                          <div key={item.id} className="py-0.5">
+                            {item.status === "available" && (
+                              <span className="status-badge-success py-0.5 px-1.5 text-[10px]">
+                                Available
+                              </span>
+                            )}
+                            {item.status === "near_expiry" && (
+                              <span className="status-badge-warning py-0.5 px-1.5 text-[10px]">
+                                Near Expiry
+                              </span>
+                            )}
+                            {item.status === "expired" && (
+                              <span className="status-badge-danger py-0.5 px-1.5 text-[10px]">
+                                Expired
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 align-top">
+                      <div className="space-y-2">
+                        {g.items.map((item) => (
+                          <div key={item.id} className="flex items-center gap-1">
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setSelectedProduct(item)}>
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            {item.status === "near_expiry" && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0"
+                                onClick={() => void handleMarkExpired(item.id)}
+                                disabled={statusUpdating === item.id}
+                                title="Mark as expired"
+                              >
+                                <CalendarDays className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            {!loading && filtered.length === 0 && (
+            {!loading && filteredGrouped.length === 0 && (
               <p className="text-sm text-muted-foreground p-6 text-center">
                 No finished products yet. Complete a batch (QC pass) to auto-receive packaged stock here.
               </p>
@@ -353,12 +417,14 @@ export default function FinishedProductsPage() {
                 </tr>
               </thead>
               <tbody>
-                {finishedProducts.map((p) => (
-                  <tr key={p.id} className="border-b last:border-0">
-                    <td className="px-4 py-3 font-medium">{p.name}</td>
-                    <td className="px-4 py-3">{p.stock.toLocaleString()}</td>
-                    <td className="px-4 py-3">RWF {p.unitCost}</td>
-                    <td className="px-4 py-3 font-semibold">RWF {(p.stock * p.unitCost).toLocaleString()}</td>
+                {filteredGrouped.map((g) => (
+                  <tr key={g.key} className="border-b last:border-0">
+                    <td className="px-4 py-3 font-medium">
+                      {g.name} <span className="text-xs text-muted-foreground font-normal">({g.flavor} • {g.size})</span>
+                    </td>
+                    <td className="px-4 py-3">{g.totalStock.toLocaleString()}</td>
+                    <td className="px-4 py-3">RWF {g.unitCost}</td>
+                    <td className="px-4 py-3 font-semibold">RWF {g.totalValue.toLocaleString()}</td>
                   </tr>
                 ))}
                 <tr className="bg-muted/50 font-bold">

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { rawMaterialsApi, suppliersApi } from "@/lib/api";
+import { rawMaterialsApi, suppliersApi, batchesApi } from "@/lib/api";
 import type { MaterialCatalogRow } from "@/lib/materialMappers";
 import { mapApiRawMaterialToRow } from "@/lib/materialMappers";
 import {
@@ -10,8 +10,9 @@ import {
   type PurchaseOrderDraftV1,
 } from "@/lib/poDraft";
 import { useRole } from "@/contexts/RoleContext";
-import { Plus, Search, Download, AlertTriangle, ArrowUpCircle, ArrowDownCircle, Eye, Package } from "lucide-react";
+import { Plus, Search, Download, AlertTriangle, ArrowUpCircle, ArrowDownCircle, Eye, Package, Printer } from "lucide-react";
 import { toast } from "sonner";
+import { printPurchaseOrder } from "@/lib/printUtils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -176,6 +177,10 @@ export default function RawMaterialsPage() {
   const [receiveLines, setReceiveLines] = useState<ReceiveLine[]>([]);
   const [receiveNotes, setReceiveNotes] = useState("");
 
+  const [stockRequests, setStockRequests] = useState<any[]>([]);
+  const [requestsLoading, setRequestsLoading] = useState(false);
+  const [approveSubmitting, setApproveSubmitting] = useState<Record<string, boolean>>({});
+
   const loadCatalog = useCallback(async () => {
     setCatalogLoading(true);
     setCatalogError(null);
@@ -234,11 +239,43 @@ export default function RawMaterialsPage() {
     }
   }, []);
 
+  const loadStockRequests = useCallback(async () => {
+    setRequestsLoading(true);
+    try {
+      const { data } = await batchesApi.listPage({ size: 100, status: "PLANNED" });
+      const content = data.content ?? [];
+      setStockRequests(content.filter((b: any) => !b.stockApproved));
+    } catch (e) {
+      console.error("Could not load stock requests", e);
+    } finally {
+      setRequestsLoading(false);
+    }
+  }, []);
+
+  const handleApproveStock = async (batchId: string) => {
+    setApproveSubmitting(prev => ({ ...prev, [batchId]: true }));
+    try {
+      await batchesApi.approveStock(batchId);
+      toast.success("Stock request approved successfully.");
+      await loadStockRequests();
+      await loadCatalog();
+    } catch (e: unknown) {
+      const msg =
+        typeof e === "object" && e !== null && "response" in e
+          ? String((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? "")
+          : "";
+      toast.error(msg || "Could not approve stock.");
+    } finally {
+      setApproveSubmitting(prev => ({ ...prev, [batchId]: false }));
+    }
+  };
+
   useEffect(() => {
     void loadCatalog();
     void loadSuppliers();
     void loadOrders();
-  }, [loadCatalog, loadSuppliers, loadOrders]);
+    void loadStockRequests();
+  }, [loadCatalog, loadSuppliers, loadOrders, loadStockRequests]);
 
   useEffect(() => {
     if (searchParams.get("resumePo") !== "1") return;
@@ -640,6 +677,35 @@ export default function RawMaterialsPage() {
     }
   };
 
+  const handlePrintPO = async (po: PurchaseOrderRow) => {
+    try {
+      const { data } = await rawMaterialsApi.getPurchaseOrder(po.entityId);
+      const items = (data.items as unknown[] ?? []).map((row) => {
+        const it = row as Record<string, unknown>;
+        const qty = Number(it.quantity ?? 0);
+        const uc = Number(it.unitCost ?? 0);
+        return {
+          materialName: String(it.materialName ?? "Material"),
+          unitOfMeasure: String(it.unitOfMeasure ?? ""),
+          quantity: qty,
+          unitCost: uc,
+          lineTotal: Number(it.lineTotal ?? qty * uc),
+        };
+      });
+      printPurchaseOrder({
+        poNumber: po.poNumber,
+        supplier: po.supplier,
+        expectedDate: po.expectedDate,
+        status: po.status,
+        total: po.total,
+        notes: data.notes ? String(data.notes) : undefined,
+        items,
+      });
+    } catch {
+      toast.error("Could not load purchase order details for printing.");
+    }
+  };
+
   const filtered = materials.filter(
     (m) =>
       m.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -907,6 +973,16 @@ export default function RawMaterialsPage() {
           <TabsTrigger value="catalog">Material Catalog</TabsTrigger>
           <TabsTrigger value="movements">Stock Movements</TabsTrigger>
           <TabsTrigger value="orders">Purchase Orders</TabsTrigger>
+          {canMutateInventory && (
+            <TabsTrigger value="requests" className="relative">
+              Stock Requests
+              {stockRequests.length > 0 && (
+                <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-destructive text-destructive-foreground">
+                  {stockRequests.length}
+                </span>
+              )}
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="catalog" className="mt-4 space-y-4">
@@ -1268,19 +1344,108 @@ export default function RawMaterialsPage() {
                       <td className="px-4 py-3">
                         <span className={poStatusClass(po.status)}>{poStatusLabel(po.status)}</span>
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        {(po.status === "pending" || po.status === "partial") && canMutateInventory && (
-                          <Button type="button" variant="outline" size="sm" onClick={() => void openReceiveForPo(po)}>
-                            <Package className="w-4 h-4 mr-1" />
-                            Receive
-                          </Button>
-                        )}
-                      </td>
+                       <td className="px-4 py-3 text-right">
+                         <div className="flex items-center justify-end gap-1">
+                           {(po.status === "pending" || po.status === "partial") && canMutateInventory && (
+                             <Button type="button" variant="outline" size="sm" onClick={() => void openReceiveForPo(po)}>
+                               <Package className="w-4 h-4 mr-1" />
+                               Receive
+                             </Button>
+                           )}
+                           <Button
+                             type="button"
+                             variant="ghost"
+                             size="sm"
+                             title="Print Purchase Order"
+                             onClick={() => void handlePrintPO(po)}
+                           >
+                             <Printer className="w-4 h-4" />
+                           </Button>
+                         </div>
+                       </td>
                     </tr>
                   ))
                 )}
               </tbody>
             </table>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="requests" className="mt-4 space-y-4">
+          <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-4">
+            <h3 className="text-lg font-semibold mb-1">Production Stock Requests</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Review and approve stock issuance requests for planned production batches.
+            </p>
+
+            {requestsLoading && <p className="text-sm text-muted-foreground">Loading requests…</p>}
+
+            {!requestsLoading && stockRequests.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <Package className="w-12 h-12 text-muted-foreground/50 mb-3" />
+                <p className="text-sm font-medium">No pending stock requests</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  All planned production batches have been approved for stock.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {stockRequests.map((b) => (
+                  <div key={b.id} className="border rounded-lg p-4 bg-muted/30 hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center justify-between flex-wrap gap-2 border-b pb-3 mb-3">
+                      <div>
+                        <span className="text-xs font-mono text-muted-foreground">Batch: {b.batchNumber}</span>
+                        <h4 className="font-semibold text-sm mt-0.5">{b.productName}</h4>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <span className="text-sm text-muted-foreground">
+                          Target: <span className="font-semibold text-foreground">{b.targetQuantity} units</span>
+                        </span>
+                        <Button
+                          size="sm"
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                          disabled={approveSubmitting[b.id]}
+                          onClick={() => void handleApproveStock(b.id)}
+                        >
+                          {approveSubmitting[b.id] ? "Approving…" : "Approve & Issue Stock"}
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                        Required Ingredients
+                      </h5>
+                      <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
+                        {(b.ingredients || []).map((ing: any) => {
+                          const mat = materials.find((r) => r.id === ing.materialId);
+                          const currentStock = mat ? mat.stock : 0;
+                          const hasStock = currentStock >= ing.quantityRequired;
+                          return (
+                            <div key={ing.materialId} className="flex items-center justify-between border rounded p-2 bg-background text-xs">
+                              <div>
+                                <p className="font-medium text-foreground">{ing.materialName}</p>
+                                <p className="text-muted-foreground">Required: {ing.quantityRequired} {ing.unitOfMeasure}</p>
+                              </div>
+                              <div className="text-right">
+                                <span className={hasStock ? "text-emerald-600 font-semibold" : "text-destructive font-semibold"}>
+                                  {currentStock} {ing.unitOfMeasure} available
+                                </span>
+                                {!hasStock && (
+                                  <p className="text-[10px] text-destructive font-medium flex items-center gap-0.5 mt-0.5">
+                                    <AlertTriangle className="w-3 h-3 inline shrink-0" /> Shortfall
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </TabsContent>
       </Tabs>

@@ -1,26 +1,59 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { Mail, ArrowLeft, CheckCircle, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { authApi } from "@/lib/api";
 import whizuppLogo from "@/assets/whizupp-logo.png";
 
 export default function ForgotPasswordPage() {
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get("token") || "";
+
   const [step, setStep] = useState<"request" | "sent" | "reset" | "done">("request");
   const [email, setEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleRequest = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (token) {
+      setStep("reset");
+    }
+  }, [token]);
+
+  const handleRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => { setLoading(false); setStep("sent"); }, 800);
+    setError("");
+    try {
+      await authApi.forgotPassword(email);
+      setStep("sent");
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Failed to request password reset. Please verify your email.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleReset = (e: React.FormEvent) => {
+  const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
     setLoading(true);
-    setTimeout(() => { setLoading(false); setStep("done"); }, 800);
+    setError("");
+    try {
+      await authApi.resetPassword({ token, newPassword, confirmPassword });
+      setStep("done");
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Failed to reset password. The link might be expired or invalid.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -39,6 +72,12 @@ export default function ForgotPasswordPage() {
         <div className="glass-card rounded-2xl p-8 border shadow-xl relative overflow-hidden">
           {/* Top accent line */}
           <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-primary-to-secondary" />
+
+          {error && (
+            <div className="mb-4 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg p-3 font-medium">
+              {error}
+            </div>
+          )}
 
           {step === "request" && (
             <form onSubmit={handleRequest} className="space-y-5">
@@ -75,6 +114,7 @@ export default function ForgotPasswordPage() {
               </p>
             </form>
           )}
+
           {step === "sent" && (
             <div className="text-center space-y-4 py-2">
               <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-2 border border-primary/20">
@@ -82,10 +122,10 @@ export default function ForgotPasswordPage() {
               </div>
               <h2 className="font-heading font-bold text-xl text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">Check Your Email</h2>
               <p className="text-sm text-muted-foreground leading-relaxed">We sent a reset link to <strong className="text-foreground">{email}</strong></p>
-              <Button variant="outline" onClick={() => setStep("reset")} className="w-full border-muted hover:bg-muted font-semibold mt-4">I have the link (simulate)</Button>
-              <button className="text-sm text-primary hover:text-primary/80 font-bold transition-colors block mx-auto" onClick={() => setStep("request")}>Didn't receive? Try again</button>
+              <button className="text-sm text-primary hover:text-primary/80 font-bold transition-colors block mx-auto mt-4" onClick={() => setStep("request")}>Didn't receive? Try again</button>
             </div>
           )}
+
           {step === "reset" && (
             <form onSubmit={handleReset} className="space-y-5">
               <div className="text-center">
@@ -97,6 +137,8 @@ export default function ForgotPasswordPage() {
                 <Input
                   type="password"
                   placeholder="New password"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
                   required
                   className="bg-background/50 border-muted focus:border-primary/50 transition-colors"
                 />
@@ -106,6 +148,8 @@ export default function ForgotPasswordPage() {
                 <Input
                   type="password"
                   placeholder="Confirm new password"
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
                   required
                   className="bg-background/50 border-muted focus:border-primary/50 transition-colors"
                 />
@@ -119,6 +163,7 @@ export default function ForgotPasswordPage() {
               </Button>
             </form>
           )}
+
           {step === "done" && (
             <div className="text-center space-y-4 py-2">
               <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-2 border border-primary/20">
@@ -136,3 +181,4 @@ export default function ForgotPasswordPage() {
     </div>
   );
 }
+

@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
+import { useRole } from "@/contexts/RoleContext";
+import { Navigate } from "react-router-dom";
 
 import { Plus, CheckCircle, XCircle, Clock, Printer, TrendingUp } from "lucide-react";
 
@@ -125,6 +127,11 @@ function mapPendingBatch(b: Record<string, unknown>): BatchPick {
 
 
 export default function QualityControlPage() {
+  const { role } = useRole();
+
+  if (role !== "administrator" && role !== "qc_officer") {
+    return <Navigate to="/" replace />;
+  }
 
   const [qualityTests, setQualityTests] = useState<QCTestRow[]>([]);
 

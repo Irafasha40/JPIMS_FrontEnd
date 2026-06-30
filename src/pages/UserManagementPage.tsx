@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Edit, Shield, Search, UserX, KeyRound } from "lucide-react";
+import { Plus, Edit, Shield, Search, UserX, KeyRound, UserCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -94,6 +94,15 @@ export default function UserManagementPage() {
   const [deactivateUser, setDeactivateUser] = useState<UserRow | null>(null);
   const [deactivateSubmitting, setDeactivateSubmitting] = useState(false);
 
+  // Activate
+  const [activateOpen, setActivateOpen] = useState(false);
+  const [activateUser, setActivateUser] = useState<UserRow | null>(null);
+  const [activateSubmitting, setActivateSubmitting] = useState(false);
+
+  // Permission Matrix
+  const [permissionStates, setPermissionStates] = useState<Record<string, boolean>>({});
+  const [savingPermissions, setSavingPermissions] = useState(false);
+
   const loadUsers = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -118,9 +127,25 @@ export default function UserManagementPage() {
     }
   }, []);
 
+  const loadPermissions = useCallback(async () => {
+    try {
+      const { data } = await usersApi.getPermissions();
+      const states: Record<string, boolean> = {};
+      data.forEach((pm) => {
+        const roleKey = String(pm.role).toLowerCase() as UserRole;
+        const moduleName = String(pm.module);
+        states[`${roleKey}|${moduleName}`] = pm.canView !== false;
+      });
+      setPermissionStates(states);
+    } catch (e: unknown) {
+      console.error("Could not load permissions matrix", e);
+    }
+  }, []);
+
   useEffect(() => {
     void loadUsers();
-  }, [loadUsers]);
+    void loadPermissions();
+  }, [loadUsers, loadPermissions]);
 
   const filtered = users.filter(
     (u) =>
@@ -251,6 +276,67 @@ export default function UserManagementPage() {
       toast.error(msg || "Could not deactivate user.");
     } finally {
       setDeactivateSubmitting(false);
+    }
+  };
+
+  // ── Activate User ──────────────────────────────────────────────────────────
+  const openActivateDialog = (u: UserRow) => {
+    setActivateUser(u);
+    setActivateOpen(true);
+  };
+
+  const handleActivate = async () => {
+    if (!activateUser) return;
+    setActivateSubmitting(true);
+    try {
+      await usersApi.activate(activateUser.id);
+      toast.success(`${activateUser.name} has been activated.`);
+      setActivateOpen(false);
+      setActivateUser(null);
+      await loadUsers();
+    } catch (e: unknown) {
+      const msg =
+        typeof e === "object" && e !== null && "response" in e
+          ? String((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? "")
+          : "";
+      toast.error(msg || "Could not activate user.");
+    } finally {
+      setActivateSubmitting(false);
+    }
+  };
+
+  const handlePermissionToggle = (roleKey: UserRole, mod: string, checked: boolean) => {
+    if (roleKey === "administrator" || mod === "Dashboard") return;
+    setPermissionStates(prev => ({
+      ...prev,
+      [`${roleKey}|${mod}`]: checked
+    }));
+  };
+
+  const handleSavePermissions = async () => {
+    setSavingPermissions(true);
+    try {
+      const payload = Object.entries(permissionStates).map(([key, canView]) => {
+        const separatorIdx = key.indexOf("|");
+        const roleKey = key.substring(0, separatorIdx);
+        const mod = key.substring(separatorIdx + 1);
+        return {
+          role: roleKey.toUpperCase(),
+          module: mod,
+          canView
+        };
+      });
+      await usersApi.updatePermissions(payload);
+      toast.success("Permission matrix updated successfully.");
+      await loadPermissions();
+    } catch (e: unknown) {
+      const msg =
+        typeof e === "object" && e !== null && "response" in e
+          ? String((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? "")
+          : "";
+      toast.error(msg || "Could not save permissions.");
+    } finally {
+      setSavingPermissions(false);
     }
   };
 
@@ -522,6 +608,36 @@ export default function UserManagementPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Activate Dialog */}
+      <Dialog
+        open={activateOpen}
+        onOpenChange={(o) => {
+          setActivateOpen(o);
+          if (!o) setActivateUser(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Activate User</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Are you sure you want to activate <strong>{activateUser?.name}</strong>?
+            They will be able to log back in and perform duties as per their role.
+          </p>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setActivateOpen(false)}>Cancel</Button>
+            <Button
+              type="button"
+              disabled={activateSubmitting}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-600 dark:hover:bg-emerald-700"
+              onClick={() => void handleActivate()}
+            >
+              {activateSubmitting ? "Activating…" : "Activate"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Tabs defaultValue="users">
         <TabsList>
           <TabsTrigger value="users">Users</TabsTrigger>
@@ -614,6 +730,17 @@ export default function UserManagementPage() {
                             <UserX className="w-4 h-4" />
                           </Button>
                         )}
+                        {u.status === "inactive" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            title="Activate"
+                            className="text-emerald-600 hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-400"
+                            onClick={() => openActivateDialog(u)}
+                          >
+                            <UserCheck className="w-4 h-4" />
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -643,13 +770,25 @@ export default function UserManagementPage() {
                     <td className="p-2 font-medium">{mod}</td>
                     {matrixRoles.map((role) => (
                       <td key={role} className="p-2 text-center">
-                        <Checkbox defaultChecked={role === "administrator" || mod === "Dashboard"} />
+                        <Checkbox
+                          checked={!!permissionStates[`${role}|${mod}`]}
+                          onCheckedChange={(checked) => handlePermissionToggle(role, mod, !!checked)}
+                          disabled={role === "administrator" || mod === "Dashboard"}
+                        />
                       </td>
                     ))}
                   </tr>
                 ))}
               </tbody>
             </table>
+            <div className="flex justify-end mt-4">
+              <Button
+                disabled={savingPermissions}
+                onClick={() => void handleSavePermissions()}
+              >
+                {savingPermissions ? "Saving Changes…" : "Save Changes"}
+              </Button>
+            </div>
           </div>
         </TabsContent>
       </Tabs>

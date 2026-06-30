@@ -47,7 +47,12 @@ export const rawMaterialsApi = {
     apiClient.put<Record<string, unknown>>(`${rawMaterialsBase}/purchase-orders/${id}/receive`, body ?? {}),
 };
 
-export const usersApi = withListPage("/users");
+export const usersApi = {
+  ...withListPage("/users"),
+  activate: (id: string | number) => apiClient.put<{ id: string; isActive: boolean }>(`/users/${id}/activate`),
+  getPermissions: () => apiClient.get<Array<Record<string, any>>>("/users/permissions"),
+  updatePermissions: (body: Array<Record<string, any>>) => apiClient.put<any>("/users/permissions", body),
+};
 export const recipesApi = withListPage("/recipes");
 const suppliersBase = "/suppliers";
 export const suppliersApi = {
@@ -63,6 +68,8 @@ export const batchesApi = {
   create: (body: Record<string, unknown>) => apiClient.post<Record<string, unknown>>(batchesBase, body),
   confirmIngredients: (id: string) =>
     apiClient.post<Record<string, unknown>>(`${batchesBase}/${id}/confirm-ingredients`),
+  approveStock: (id: string) =>
+    apiClient.post<Record<string, unknown>>(`${batchesBase}/${id}/approve-stock`),
   start: (id: string) => apiClient.post<Record<string, unknown>>(`${batchesBase}/${id}/start`),
   recordYield: (id: string, body: Record<string, unknown>) =>
     apiClient.put<Record<string, unknown>>(`${batchesBase}/${id}/yield`, body),
