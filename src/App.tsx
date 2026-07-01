@@ -22,6 +22,7 @@ import FirstLoginPasswordPage from "./pages/FirstLoginPasswordPage";
 import RegisterPage from "./pages/RegisterPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ProfilePage from "./pages/ProfilePage";
+import ProductCatalogPage from "./pages/ProductCatalogPage";
 import { useRole } from "@/contexts/RoleContext";
 
 const queryClient = new QueryClient();
@@ -87,6 +88,7 @@ const App = () => (
               <Route path="/users" element={<UserManagementPage />} />
               <Route path="/security" element={<SecurityAuditPage />} />
               <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/product-catalog" element={<ProductCatalogPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>

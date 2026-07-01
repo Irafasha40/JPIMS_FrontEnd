@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Breadcrumb from "@/components/Breadcrumb";
-import { recipesApi, rawMaterialsApi } from "@/lib/api";
+import { recipesApi, rawMaterialsApi, productCatalogApi } from "@/lib/api";
 import type { MaterialCatalogRow } from "@/lib/materialMappers";
 import { mapApiRawMaterialToRow } from "@/lib/materialMappers";
 import { useRole } from "@/contexts/RoleContext";
@@ -91,6 +91,53 @@ export default function RecipesPage() {
   const [newIngredientMaterialId, setNewIngredientMaterialId] = useState("");
   const [newIngredientQty, setNewIngredientQty] = useState("");
   const [newIngredients, setNewIngredients] = useState<Array<{ materialId: string; quantity: number }>>([]);
+  const [catalogItems, setCatalogItems] = useState<any[]>([]);
+  const [newProductDialogOpen, setNewProductDialogOpen] = useState(false);
+  const [catalogFormName, setCatalogFormName] = useState("");
+  const [catalogFormCost, setCatalogFormCost] = useState("");
+  const [catalogFormDesc, setCatalogFormDesc] = useState("");
+  const [catalogFormSubmitting, setCatalogFormSubmitting] = useState(false);
+  const [catalogFormTarget, setCatalogFormTarget] = useState<"new" | "edit">("new");
+
+  const handleCreateCatalogItem = async () => {
+    if (!catalogFormName.trim()) {
+      toast.error("Product name is required.");
+      return;
+    }
+    const cost = parseFloat(catalogFormCost);
+    if (Number.isNaN(cost) || cost < 0) {
+      toast.error("Unit cost must be a positive number.");
+      return;
+    }
+
+    setCatalogFormSubmitting(true);
+    try {
+      const { data } = await productCatalogApi.create({
+        productName: catalogFormName.trim(),
+        unitCost: cost,
+        description: catalogFormDesc.trim() || undefined,
+      });
+      toast.success(`Product "${catalogFormName}" added to catalog.`);
+      
+      setCatalogItems((prev) => [...prev, data]);
+      
+      if (catalogFormTarget === "new") {
+        setNewProductName(data.productName);
+      } else {
+        setEditProductName(data.productName);
+      }
+      
+      setNewProductDialogOpen(false);
+      setCatalogFormName("");
+      setCatalogFormCost("");
+      setCatalogFormDesc("");
+    } catch (e: any) {
+      const msg = e?.response?.data?.message || "Failed to create product catalog item.";
+      toast.error(msg);
+    } finally {
+      setCatalogFormSubmitting(false);
+    }
+  };
 
   const resetCreateForm = () => {
     setNewName("");
@@ -126,12 +173,14 @@ export default function RecipesPage() {
     setLoading(true);
     setError(null);
     try {
-      const [rRes, mRes] = await Promise.all([
+      const [rRes, mRes, cRes] = await Promise.all([
         recipesApi.listPage({ size: 200, sort: "name,asc" }),
         rawMaterialsApi.listPage({ size: 300, sort: "name,asc" }).catch(() => ({ data: { content: [] as Record<string, unknown>[] } })),
+        productCatalogApi.listPage({ size: 200 }).catch(() => ({ data: { content: [] as Record<string, unknown>[] } })),
       ]);
       setRecipes((rRes.data.content ?? []).map((row) => mapRecipe(row)));
       setMaterials((mRes.data.content ?? []).map((row) => mapApiRawMaterialToRow(row)));
+      setCatalogItems(cRes.data.content ?? []);
     } catch (e: unknown) {
       const msg =
         typeof e === "object" && e !== null && "response" in e
@@ -147,13 +196,15 @@ export default function RecipesPage() {
     let cancelled = false;
     (async () => {
       try {
-        const [rRes, mRes] = await Promise.all([
+        const [rRes, mRes, cRes] = await Promise.all([
           recipesApi.listPage({ size: 200, sort: "name,asc" }),
           rawMaterialsApi.listPage({ size: 300, sort: "name,asc" }).catch(() => ({ data: { content: [] as Record<string, unknown>[] } })),
+          productCatalogApi.listPage({ size: 200 }).catch(() => ({ data: { content: [] as Record<string, unknown>[] } })),
         ]);
         if (cancelled) return;
         setRecipes((rRes.data.content ?? []).map((row) => mapRecipe(row)));
         setMaterials((mRes.data.content ?? []).map((row) => mapApiRawMaterialToRow(row)));
+        setCatalogItems(cRes.data.content ?? []);
       } catch (e: unknown) {
         if (!cancelled) {
           const msg =
@@ -322,6 +373,16 @@ export default function RecipesPage() {
     }
   };
 
+  const displayCatalogItems = [...catalogItems];
+  if (newName && !displayCatalogItems.some((item) => item.productName === newProductName)) {
+    displayCatalogItems.push({ id: "temp-new", productName: newProductName });
+  }
+
+  const displayEditCatalogItems = [...catalogItems];
+  if (editProductName && !displayEditCatalogItems.some((item) => item.productName === editProductName)) {
+    displayEditCatalogItems.push({ id: "temp-edit", productName: editProductName });
+  }
+
   return (
     <div className="space-y-6">
       <Breadcrumb />
@@ -365,7 +426,34 @@ export default function RecipesPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Finished product *</Label>
-                  <Input placeholder="Mango Squash" value={newProductName} onChange={(e) => setNewProductName(e.target.value)} />
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <Select value={newProductName || undefined} onValueChange={setNewProductName}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select Product" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {displayCatalogItems.map((item) => (
+                            <SelectItem key={item.id} value={item.productName}>
+                              {item.productName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        setCatalogFormTarget("new");
+                        setNewProductDialogOpen(true);
+                      }}
+                      title="Create New Product"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -669,7 +757,34 @@ export default function RecipesPage() {
                     </div>
                     <div className="space-y-2">
                       <Label>Finished product *</Label>
-                      <Input placeholder="Mango Squash" value={editProductName} onChange={(e) => setEditProductName(e.target.value)} />
+                      <div className="flex gap-2">
+                        <div className="flex-1">
+                          <Select value={editProductName || undefined} onValueChange={setEditProductName}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select Product" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {displayEditCatalogItems.map((item) => (
+                                <SelectItem key={item.id} value={item.productName}>
+                                  {item.productName}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => {
+                            setCatalogFormTarget("edit");
+                            setNewProductDialogOpen(true);
+                          }}
+                          title="Create New Product"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
@@ -793,6 +908,53 @@ export default function RecipesPage() {
             </DialogContent>
           </Dialog>
         )}
+      {/* Create Catalog Product Dialog */}
+      <Dialog open={newProductDialogOpen} onOpenChange={setNewProductDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Product to Catalog</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="cat-recipe-productName">Product Name *</Label>
+              <Input
+                id="cat-recipe-productName"
+                placeholder="e.g. Mango Squash 1L"
+                value={catalogFormName}
+                onChange={(e) => setCatalogFormName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="cat-recipe-unitCost">Unit Cost (RWF per unit) *</Label>
+              <Input
+                id="cat-recipe-unitCost"
+                type="number"
+                min={0}
+                placeholder="e.g. 1500"
+                value={catalogFormCost}
+                onChange={(e) => setCatalogFormCost(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="cat-recipe-description">Description (optional)</Label>
+              <Input
+                id="cat-recipe-description"
+                placeholder="e.g. Mango flavored juice"
+                value={catalogFormDesc}
+                onChange={(e) => setCatalogFormDesc(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNewProductDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateCatalogItem} disabled={catalogFormSubmitting}>
+              {catalogFormSubmitting ? "Creating..." : "Create Product"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       </div>
   );
 }

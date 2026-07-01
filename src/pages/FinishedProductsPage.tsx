@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Search, AlertTriangle, CheckCircle, XCircle, Eye, Download, ArrowRightCircle, Package, CalendarDays } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Search, AlertTriangle, CheckCircle, XCircle, Eye, Download, ArrowRightCircle, Package, CalendarDays, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/components/ui/use-toast";
 import Breadcrumb from "@/components/Breadcrumb";
-import { finishedProductsApi } from "@/lib/api";
+import { finishedProductsApi, productCatalogApi } from "@/lib/api";
 
 type FPRow = {
   id: string;
@@ -54,6 +55,7 @@ function mapFP(p: Record<string, unknown>): FPRow {
 
 export default function FinishedProductsPage() {
   const [finishedProducts, setFinishedProducts] = useState<FPRow[]>([]);
+  const [catalogItems, setCatalogItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -82,8 +84,14 @@ export default function FinishedProductsPage() {
       setLoading(true);
       setError(null);
       try {
-        const { data } = await finishedProductsApi.listPage({ size: 200, sort: "productName,asc" });
-        if (!cancelled) setFinishedProducts((data.content ?? []).map((row) => mapFP(row)));
+        const [fpRes, catRes] = await Promise.all([
+          finishedProductsApi.listPage({ size: 200, sort: "productName,asc" }),
+          productCatalogApi.listPage({ size: 200 }).catch(() => ({ data: { content: [] } })),
+        ]);
+        if (!cancelled) {
+          setFinishedProducts((fpRes.data.content ?? []).map((row) => mapFP(row)));
+          setCatalogItems(catRes.data.content ?? []);
+        }
       } catch (e: unknown) {
         if (!cancelled) {
           const msg =
@@ -116,6 +124,10 @@ export default function FinishedProductsPage() {
 
   const groupedList = Object.entries(grouped).map(([key, items]) => {
     const [name, flavor, size] = key.split("|");
+    const catalogItem = catalogItems.find(
+      (c) => c.productName.trim().toLowerCase() === name.trim().toLowerCase()
+    );
+    const unitCost = catalogItem ? catalogItem.unitCost : (items[0]?.unitCost ?? 0);
     return {
       key,
       name,
@@ -123,8 +135,8 @@ export default function FinishedProductsPage() {
       size,
       items,
       totalStock: items.reduce((sum, item) => sum + item.stock, 0),
-      totalValue: items.reduce((sum, item) => sum + item.stock * item.unitCost, 0),
-      unitCost: items[0]?.unitCost ?? 0,
+      totalValue: items.reduce((sum, item) => sum + item.stock * unitCost, 0),
+      unitCost,
     };
   });
 
@@ -132,7 +144,7 @@ export default function FinishedProductsPage() {
     g.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const totalValue = activeFP.reduce((a, p) => a + p.stock * p.unitCost, 0);
+  const totalValue = groupedList.reduce((sum, g) => sum + g.totalValue, 0);
   const nearExpiry = activeFP.filter((p) => p.status === "near_expiry");
 
   return (
@@ -146,6 +158,12 @@ export default function FinishedProductsPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <Link to="/product-catalog">
+              <Tag className="w-4 h-4 mr-1" />
+              Product Catalog
+            </Link>
+          </Button>
           <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm">
@@ -491,7 +509,14 @@ export default function FinishedProductsPage() {
               </div>
               <div>
                 <p className="text-muted-foreground">Unit Cost</p>
-                <p className="font-medium">RWF {selectedProduct.unitCost}</p>
+                <p className="font-medium">
+                  RWF{" "}
+                  {(
+                    catalogItems.find(
+                      (c) => c.productName.trim().toLowerCase() === selectedProduct.name.trim().toLowerCase()
+                    )?.unitCost ?? selectedProduct.unitCost
+                  ).toLocaleString()}
+                </p>
               </div>
             </div>
           </DialogContent>

@@ -24,6 +24,7 @@ export default function ReportsPage() {
   const [recipeId, setRecipeId] = useState("all");
   const [productId, setProductId] = useState("all");
   const [customer, setCustomer] = useState("all");
+  const [inventoryType, setInventoryType] = useState("all");
 
   // Report results
   const [reportData, setReportData] = useState<any>(null);
@@ -80,6 +81,7 @@ export default function ReportsPage() {
         if (productId !== "all") params.productId = productId;
         res = await reportsApi.quality(params);
       } else if (activeReport === "inventory") {
+        if (inventoryType !== "all") params.type = inventoryType;
         res = await reportsApi.inventory(params);
       } else if (activeReport === "sales") {
         if (productId !== "all") params.productId = productId;
@@ -108,6 +110,13 @@ export default function ReportsPage() {
     }
   }, [activeReport]);
 
+  // Auto-refresh inventory report when inventoryType filter changes
+  useEffect(() => {
+    if (activeReport === "inventory") {
+      generateReport();
+    }
+  }, [inventoryType]);
+
   // Handle PDF and Excel downloads
   const handleExport = async (format: "pdf" | "excel") => {
     try {
@@ -124,6 +133,7 @@ export default function ReportsPage() {
         if (productId !== "all") params.productId = productId;
       } else if (activeReport === "inventory") {
         url = "/reports/inventory";
+        if (inventoryType !== "all") params.type = inventoryType;
       } else if (activeReport === "sales") {
         url = "/reports/sales";
         if (productId !== "all") params.productId = productId;
@@ -439,6 +449,22 @@ export default function ReportsPage() {
                       {p.productName}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {activeReport === "inventory" && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted-foreground uppercase">Inventory Type</label>
+              <Select value={inventoryType} onValueChange={setInventoryType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="RAW_MATERIAL">Raw Materials</SelectItem>
+                  <SelectItem value="FINISHED_PRODUCT">Finished Products</SelectItem>
                 </SelectContent>
               </Select>
             </div>

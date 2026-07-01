@@ -116,6 +116,20 @@ export const auditApi = {
     apiClient.get(`${auditBase}/export`, { responseType: "blob" }),
 };
 
+const productCatalogBase = "/product-catalog";
+export const productCatalogApi = {
+  listPage: (params?: Record<string, unknown>) =>
+    apiClient.get<SpringPage<Record<string, unknown>>>(productCatalogBase, { params }),
+  create: (body: Record<string, unknown>) =>
+    apiClient.post<Record<string, unknown>>(productCatalogBase, body),
+  update: (id: string, body: Record<string, unknown>) =>
+    apiClient.put<Record<string, unknown>>(`${productCatalogBase}/${id}`, body),
+  remove: (id: string) =>
+    apiClient.delete<Record<string, unknown>>(`${productCatalogBase}/${id}`),
+  syncPrices: () =>
+    apiClient.post<Record<string, unknown>>(`${productCatalogBase}/sync-prices`),
+};
+
 export const reportsApi = {
   production: (params?: Record<string, unknown>) =>
     apiClient.get<Record<string, unknown>>("/reports/production", { params }),
